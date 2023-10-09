@@ -4,11 +4,12 @@ use crate::tui;
 
 use clap::{builder::PossibleValuesParser, command, Arg};
 
-const PROFILE_KEY: &str = "profile";
-const AWS_CREDENTIALS_KEY: &str = "aws_credentials_path";
-const LOG_LEVEL_KEY: &str = "log_level";
-const LOG_FILE_PATH: &str = "log_file_path";
-const CONSOLE_KEY: &str = "log_to_console";
+pub(crate) const CONFIG_FILE_PATH: &str = "config_file_path";
+pub(crate) const PROFILE_KEY: &str = "aws.profile";
+pub(crate) const CREDENTIALS_KEY: &str = "aws.credentialsPath";
+pub(crate) const LOG_LEVEL_KEY: &str = "logging.level";
+pub(crate) const LOG_FILE_PATH: &str = "logging.logFilePath";
+pub(crate) const CONSOLE_KEY: &str = "logging.logToConsole";
 
 pub fn parse_commands() -> HashMap<String, String> {
     let matches = command!()
@@ -24,7 +25,7 @@ pub fn parse_commands() -> HashMap<String, String> {
                 .long_help("Set the AWS profile name to access the account and the services"),
         )
         .arg(
-            Arg::new(AWS_CREDENTIALS_KEY)
+            Arg::new(CREDENTIALS_KEY)
                 .value_name("CREDENTIALS")
                 .short('c')
                 .long("credentials")
@@ -72,11 +73,8 @@ fn create_arguments(matches: clap::ArgMatches) -> HashMap<String, String> {
         arguments.insert(PROFILE_KEY.to_string(), profile.clone());
     }
 
-    if let Some(aws_credentials_path) = matches.get_one::<String>(AWS_CREDENTIALS_KEY) {
-        arguments.insert(
-            AWS_CREDENTIALS_KEY.to_string(),
-            aws_credentials_path.clone(),
-        );
+    if let Some(aws_credentials_path) = matches.get_one::<String>(CREDENTIALS_KEY) {
+        arguments.insert(CREDENTIALS_KEY.to_string(), aws_credentials_path.clone());
     }
 
     if let Some(log_level) = matches.get_one::<String>(LOG_LEVEL_KEY) {

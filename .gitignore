@@ -1,4 +1,6 @@
 /.vscode
 
+tarpaulin-report.html
+
 /target
 /logs

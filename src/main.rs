@@ -1,20 +1,23 @@
-use std::collections::HashMap;
-
 use crate::config::{command::parse_commands, logging::init_tracing};
+
+use anyhow::Result;
 use config::config::{create_config, AppConfig};
+use std::collections::HashMap;
 use tracing::{event, span, Level};
 
 mod config;
 mod tui;
 
-fn main() {
+fn main() -> Result<()> {
     let commands = parse_commands();
-    let app_config = create_config(&commands).unwrap();
+    let app_config = create_config(&commands)?;
     print!("{:?}\n\n", app_config);
 
     // Logging can only be initialized after we fetched the configuration parameters.
-    let _guard = init_tracing(&app_config);
+    let _guard = init_tracing(&app_config.logging);
     log_commands_and_config(&commands, &app_config);
+
+    Ok(())
 }
 
 fn log_commands_and_config(commands: &HashMap<String, String>, app_config: &AppConfig) {
