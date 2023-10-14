@@ -1,4 +1,7 @@
-use crate::config::{command::parse_commands, logging::init_tracing};
+use crate::{
+    config::{command::parse_commands, logging::init_tracing},
+    tui::{app::AppState, component::root::Root},
+};
 
 use anyhow::Result;
 use config::config::{create_config, AppConfig};
@@ -23,7 +26,18 @@ async fn main() -> Result<()> {
     // let sdk_config = create_aws_config(&app_config.aws).await;
     // event!(Level::DEBUG, "Config {:?}", sdk_config);
 
-    App::run()
+    let app_state = AppState {
+        aws_config: app_config.aws,
+        profiles: Vec::new(),
+        regions: Vec::new(),
+        services: Vec::new(),
+        selected_profile: "".into(),
+        sdk_config: None,
+    };
+
+    let root_component = Root::new(&app_state);
+    let app = App::new(root_component)?;
+    app.run()
 }
 
 fn log_commands_and_config(commands: &HashMap<String, String>, app_config: &AppConfig) {

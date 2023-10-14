@@ -1,26 +1,47 @@
-use ratatui::{prelude::*, widgets::*};
+use std::io::Stdout;
 
-pub struct Services {}
+use ratatui::{
+    prelude::{Alignment, CrosstermBackend, Rect},
+    style::{Color, Modifier, Style},
+    widgets::{Block, BorderType, Borders, List, ListItem},
+    Frame,
+};
 
-impl Services {
-    pub fn new() -> Self {
-        Services {}
-    }
+use crate::tui::{app::AppState, config::TUI_CONFIG};
+
+pub struct Services<'a> {
+    app_state: &'a AppState,
+    pub has_focus: bool,
 }
 
-impl Widget for Services {
-    fn render(self, area: Rect, buf: &mut Buffer) {
+impl<'a> Services<'a> {
+    pub fn new(app_state: &'a AppState) -> Self {
+        Services {
+            app_state,
+            has_focus: false,
+        }
+    }
+
+    pub fn render(&mut self, frame: &mut Frame<'_, CrosstermBackend<Stdout>>, area: Rect) {
         let items = [
             ListItem::new("Item 1"),
             ListItem::new("Item 2"),
             ListItem::new("Item 3"),
         ];
-        ratatui::widgets::Widget::render(
+        frame.render_widget(
             List::new(items)
                 .block(
                     Block::default()
-                        .title("Services")
+                        .title(format!(
+                            "Services [{}]",
+                            TUI_CONFIG.key_config.focus_services.key_string
+                        ))
                         .title_alignment(Alignment::Center)
+                        .border_style(if self.has_focus {
+                            TUI_CONFIG.focus_border
+                        } else {
+                            TUI_CONFIG.non_focus_border
+                        })
                         .borders(Borders::ALL)
                         .border_type(BorderType::Rounded),
                 )
@@ -28,7 +49,6 @@ impl Widget for Services {
                 .highlight_style(Style::default().add_modifier(Modifier::ITALIC))
                 .highlight_symbol(">>"),
             area,
-            buf,
         );
     }
 }

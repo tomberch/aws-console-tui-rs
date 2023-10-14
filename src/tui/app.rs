@@ -1,39 +1,50 @@
+use crate::config::config::AWSConfig;
+
 use super::{
     component::root::Root,
     event::{Event, EventHandler},
     term::Term,
 };
 use anyhow::{Context, Result};
+use aws_config::SdkConfig;
 use crossterm::event::{KeyCode, KeyEvent, KeyEventKind};
 use ratatui::prelude::Rect;
 
-#[derive(Debug)]
-pub struct App {
+pub struct AppState {
+    pub aws_config: AWSConfig,
+    pub profiles: Vec<String>,
+    pub regions: Vec<String>,
+    pub services: Vec<String>,
+    pub selected_profile: String,
+    pub sdk_config: Option<SdkConfig>,
+}
+
+pub struct App<'a> {
     term: Term,
     events: EventHandler,
+    root_component: Root<'a>,
     should_quit: bool,
 }
 
-impl App {
-    fn new() -> Result<Self> {
+impl<'a> App<'a> {
+    pub fn new(root_component: Root<'a>) -> Result<Self> {
         Ok(Self {
             term: Term::start()?,
             events: EventHandler::new(),
+            root_component,
             should_quit: false,
         })
     }
 
-    pub fn run() -> Result<()> {
-        let mut app = Self::new()?;
-
-        while !app.should_quit {
-            app.draw().context("Tried to draw the application")?;
-            match app.events.next().context("Tried match event")? {
+    pub fn run(mut self) -> Result<()> {
+        while !self.should_quit {
+            self.draw().context("Tried to draw the application")?;
+            match self.events.next().context("Tried match event")? {
                 Event::Tick => {}
-                Event::Key(key_event) => app.handle_key_event(key_event)?,
+                Event::Key(key_event) => self.handle_key_event(key_event)?,
                 Event::Mouse(_) => {}
                 Event::Resize(width, height) => {
-                    app.term
+                    self.term
                         .resize(Rect::new(0, 0, width, height))
                         .context("Tried to resize terminal window")?;
                 }
@@ -49,10 +60,9 @@ impl App {
         self.should_quit = true;
     }
 
-    fn draw(&mut self) -> Result<()> {
+    pub fn draw(&mut self) -> Result<()> {
         self.term
-            .draw(|frame| frame.render_widget(Root::new(), frame.size()))
-            .context("Tried to draw terminal")?;
+            .draw(|frame| self.root_component.render(frame, frame.size()))?;
         Ok(())
     }
 
@@ -67,7 +77,7 @@ impl App {
             }
 
             KeyCode::Char('c') | KeyCode::Char('C') => self.quit(),
-            _ => {}
+            _ => self.root_component.handle_key_event(key),
         };
 
         Ok(())

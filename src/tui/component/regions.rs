@@ -1,26 +1,47 @@
-use ratatui::{prelude::*, widgets::*};
+use std::io::Stdout;
 
-pub struct Regions {}
+use ratatui::{
+    prelude::{Alignment, CrosstermBackend, Rect},
+    style::{Color, Modifier, Style},
+    widgets::{Block, BorderType, Borders, List, ListItem},
+    Frame,
+};
 
-impl Regions {
-    pub fn new() -> Self {
-        Regions {}
-    }
+use crate::tui::{app::AppState, config::TUI_CONFIG};
+
+pub struct Regions<'a> {
+    app_state: &'a AppState,
+    pub has_focus: bool,
 }
 
-impl Widget for Regions {
-    fn render(self, area: Rect, buf: &mut Buffer) {
+impl<'a> Regions<'a> {
+    pub fn new(app_state: &'a AppState) -> Self {
+        Regions {
+            app_state,
+            has_focus: false,
+        }
+    }
+
+    pub fn render(&mut self, frame: &mut Frame<'_, CrosstermBackend<Stdout>>, area: Rect) {
         let items = [
             ListItem::new("Item 1"),
             ListItem::new("Item 2"),
             ListItem::new("Item 3"),
         ];
-        ratatui::widgets::Widget::render(
+        frame.render_widget(
             List::new(items)
                 .block(
                     Block::default()
-                        .title("Regions")
+                        .title(format!(
+                            "Regions [{}]",
+                            TUI_CONFIG.key_config.focus_regions.key_string
+                        ))
                         .title_alignment(Alignment::Center)
+                        .border_style(if self.has_focus {
+                            TUI_CONFIG.focus_border
+                        } else {
+                            TUI_CONFIG.non_focus_border
+                        })
                         .borders(Borders::ALL)
                         .border_type(BorderType::Rounded),
                 )
@@ -28,7 +49,6 @@ impl Widget for Regions {
                 .highlight_style(Style::default().add_modifier(Modifier::ITALIC))
                 .highlight_symbol(">>"),
             area,
-            buf,
         );
     }
 }

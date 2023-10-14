@@ -1,33 +1,46 @@
+use std::io::Stdout;
+
+use crossterm::event::KeyEvent;
 use ratatui::{prelude::*, widgets::*};
 
-use crate::tui::theme::THEME;
-
-use super::awsservice::AwsService;
+use super::awsservice::AwsServices;
 use super::profiles::Profiles;
 use super::regions::Regions;
 use super::services::Services;
+use crate::tui::app::AppState;
+use crate::tui::config::TUI_CONFIG;
 
-pub struct Root {
-    profiles: Profiles,
-    regions: Regions,
-    services: Services,
-    aws_service: AwsService,
+pub struct Components<'a> {
+    profiles: Profiles<'a>,
+    regions: Regions<'a>,
+    services: Services<'a>,
+    aws_service: AwsServices<'a>,
 }
 
-impl Root {
-    pub fn new() -> Self {
+pub struct Root<'a> {
+    pub app_state: &'a AppState,
+    components: Components<'a>,
+}
+impl<'a> Root<'a> {
+    pub fn new(app_state: &'a AppState) -> Self {
+        let profiles = Profiles::new(app_state);
+        let regions = Regions::new(app_state);
+        let services = Services::new(app_state);
+        let aws_services = AwsServices::new(app_state);
+
         Root {
-            profiles: Profiles::new(),
-            regions: Regions::new(),
-            services: Services::new(),
-            aws_service: AwsService::new(),
+            app_state,
+            components: Components {
+                profiles: profiles,
+                regions: regions,
+                services: services,
+                aws_service: aws_services,
+            },
         }
     }
-}
 
-impl Widget for Root {
-    fn render(self, area: Rect, buf: &mut Buffer) {
-        Block::new().style(THEME.root).render(area, buf);
+    pub fn render(&mut self, frame: &mut Frame<'_, CrosstermBackend<Stdout>>, area: Rect) {
+        frame.render_widget(Block::new().style(TUI_CONFIG.root), frame.size());
 
         let main_layout = Layout::default()
             .direction(Direction::Horizontal)
@@ -43,28 +56,50 @@ impl Widget for Root {
             ])
             .split(main_layout[0]);
 
-        self.profiles.render(list_layout[0], buf);
-        self.regions.render(list_layout[1], buf);
-        self.services.render(list_layout[2], buf);
-
-        self.aws_service.render(main_layout[1], buf);
+        self.components.profiles.render(frame, list_layout[0]);
+        self.components.regions.render(frame, list_layout[1]);
+        self.components.services.render(frame, list_layout[2]);
+        self.components.aws_service.render(frame, main_layout[1]);
     }
-}
 
-impl Root {
-    fn render_title_bar(&self, area: Rect, buf: &mut Buffer) {
-        let layout = Layout::default()
-            .direction(Direction::Horizontal)
-            .constraints(vec![Constraint::Percentage(50), Constraint::Percentage(50)])
-            .split(area);
+    pub fn handle_key_event(&mut self, key: KeyEvent) {
+        match key.code {
+            val if TUI_CONFIG.key_config.focus_profiles.key_code == val
+                && TUI_CONFIG.key_config.focus_profiles.key_modifier == key.modifiers =>
+            {
+                self.clear_focus();
+                self.components.profiles.has_focus = true;
+            }
+            val if TUI_CONFIG.key_config.focus_regions.key_code == val
+                && TUI_CONFIG.key_config.focus_regions.key_modifier == key.modifiers =>
+            {
+                self.clear_focus();
+                self.components.regions.has_focus = true;
+            }
+            val if TUI_CONFIG.key_config.focus_services.key_code == val
+                && TUI_CONFIG.key_config.focus_services.key_modifier == key.modifiers =>
+            {
+                self.clear_focus();
+                self.components.services.has_focus = true;
+            }
+            val if TUI_CONFIG.key_config.focus_aws_service.key_code == val
+                && TUI_CONFIG.key_config.focus_aws_service.key_modifier == key.modifiers =>
+            {
+                self.clear_focus();
+                self.components.aws_service.has_focus = true;
+            }
+            _ => {}
+        };
 
-        Paragraph::new(Span::styled("Ratatui", THEME.app_title)).render(layout[0], buf);
-        let titles = vec!["", " Recipe ", " Email ", " Traceroute ", " Weather "];
-        Tabs::new(titles)
-            .style(THEME.tabs)
-            .highlight_style(THEME.tabs_selected)
-            .select(1)
-            .divider("")
-            .render(layout[1], buf);
+        if self.components.profiles.has_focus {
+            self.components.profiles.handle_key_events(key);
+        }
+    }
+
+    fn clear_focus(&mut self) {
+        self.components.profiles.has_focus = false;
+        self.components.regions.has_focus = false;
+        self.components.services.has_focus = false;
+        self.components.aws_service.has_focus = false;
     }
 }
