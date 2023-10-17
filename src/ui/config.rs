@@ -3,6 +3,7 @@ use crossterm::event::{KeyCode, KeyModifiers};
 use ratatui::style::{Color, Style};
 
 pub struct TuiConfig<'a> {
+    pub tick_rate_in_ms: u64,
     pub root: Style,
     pub focus_border: Style,
     pub non_focus_border: Style,
@@ -32,9 +33,13 @@ const FOCUS_AWS_SERVICES_CHAR: char = 'a';
 pub struct ListConfig<'a> {
     pub selected_symbol: &'a str,
     pub selected_style: Style,
+    pub selection_up: KeyCode,
+    pub selection_down: KeyCode,
+    pub do_selection: KeyCode,
 }
 
 pub const TUI_CONFIG: TuiConfig = TuiConfig {
+    tick_rate_in_ms: 250,
     root: Style::new().bg(DARK_BLUE),
     focus_border: Style::new().fg(Color::Green),
     non_focus_border: Style::new().fg(Color::White),
@@ -63,6 +68,9 @@ pub const TUI_CONFIG: TuiConfig = TuiConfig {
     list_config: ListConfig {
         selected_style: Style::new().fg(Color::LightGreen),
         selected_symbol: &">",
+        selection_up: KeyCode::Up,
+        selection_down: KeyCode::Down,
+        do_selection: KeyCode::Enter,
     },
 };
 

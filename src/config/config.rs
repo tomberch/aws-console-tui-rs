@@ -102,9 +102,7 @@ fn get_default_aws_credential_path() -> PathBuf {
 #[cfg(test)]
 mod tests_config {
 
-    use crate::config::command::{
-        CONSOLE_KEY, CREDENTIALS_KEY, LOG_FILE_PATH, LOG_LEVEL_KEY, PROFILE_KEY,
-    };
+    use crate::config::command::{CONSOLE_KEY, CREDENTIALS_KEY, LOG_FILE_PATH, LOG_LEVEL_KEY};
 
     use super::*;
     use assert_fs::prelude::*;
@@ -127,17 +125,6 @@ mod tests_config {
         assert_eq!(app_config.logging.level, "WARN");
         assert_eq!(app_config.logging.log_file_path, "");
         assert_eq!(app_config.logging.log_to_console, "");
-    }
-
-    #[test]
-    fn test_profile_command_config() {
-        let mut commands = HashMap::<String, String>::new();
-        let profile = "dev";
-        commands.insert(PROFILE_KEY.to_string(), profile.to_string());
-
-        let app_config = create_config(&commands).unwrap();
-
-        assert_eq!(app_config.aws.profile, profile);
     }
 
     #[test]

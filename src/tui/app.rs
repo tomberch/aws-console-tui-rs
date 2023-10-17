@@ -10,15 +10,11 @@ use aws_config::SdkConfig;
 use crossterm::event::{KeyCode, KeyEvent, KeyEventKind};
 use ratatui::prelude::Rect;
 
-pub struct AppState {
+pub struct AppState<'a> {
     pub aws_config: AWSConfig,
-    pub profiles: Vec<String>,
-    pub regions: Vec<String>,
+    pub profile: &'a Option<&'a Profile>,
     pub services: Vec<String>,
-    pub selected_profile: String,
-    pub sdk_config: Option<SdkConfig>,
 }
-
 pub struct App<'a> {
     term: Term,
     events: EventHandler,

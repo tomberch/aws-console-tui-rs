@@ -1,7 +1,15 @@
 use anyhow::Result;
 use aws_config::{profile::profile_file::ProfileFileKind, SdkConfig};
+use tracing::{event, Level};
 
 use crate::config::config::AWSConfig;
+
+#[derive(Debug)]
+pub struct AwsCallerIdentity {
+    pub account: String,
+    pub arn: String,
+    pub user_id: String,
+}
 
 pub async fn create_aws_config(aws_config: &AWSConfig) -> SdkConfig {
     let provider = build_credentials_provider(aws_config);
@@ -11,11 +19,15 @@ pub async fn create_aws_config(aws_config: &AWSConfig) -> SdkConfig {
         loader = loader.endpoint_url(aws_config.endpoint.as_str());
     }
 
-    let config = loader.load().await;
+    let sdk_config = loader.load().await;
+    event!(
+        Level::DEBUG,
+        "AWS Config for profile {} = {:?}",
+        aws_config.endpoint,
+        sdk_config
+    );
 
-    check_caller_identity(&config).await.unwrap();
-
-    config
+    sdk_config
 }
 
 fn build_credentials_provider(
@@ -38,22 +50,17 @@ fn build_credentials_provider(
     provider.build()
 }
 
-async fn check_caller_identity(config: &SdkConfig) -> Result<()> {
+async fn fetch_caller_identity(config: &SdkConfig) -> Result<AwsCallerIdentity> {
     let client = aws_sdk_sts::Client::new(config);
     let response = client.get_caller_identity().send().await?;
 
-    println!(
-        "Success! AccountId = {}",
-        response.account().unwrap_or_default()
-    );
-    println!(
-        "Success! AccountArn = {}",
-        response.arn().unwrap_or_default()
-    );
-    println!(
-        "Success! UserID = {}",
-        response.user_id().unwrap_or_default()
-    );
+    let identity = AwsCallerIdentity {
+        account: response.account().unwrap_or_default().to_string(),
+        arn: response.arn().unwrap_or_default().to_string(),
+        user_id: response.user_id().unwrap_or_default().to_string(),
+    };
 
-    Ok(())
+    event!(Level::DEBUG, "Caller Identity = {:?}", identity);
+
+    Ok(identity)
 }

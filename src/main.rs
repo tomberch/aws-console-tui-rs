@@ -1,7 +1,4 @@
-use crate::{
-    config::{command::parse_commands, logging::init_tracing},
-    tui::{app::AppState, component::root::Root},
-};
+use crate::config::{command::parse_commands, logging::init_tracing};
 
 use anyhow::Result;
 use config::config::{create_config, AppConfig};
@@ -11,31 +8,20 @@ use tui::app::App;
 
 mod config;
 mod repository;
+mod state;
 mod tui;
+mod ui;
 
 #[tokio::main]
 async fn main() -> Result<()> {
     let commands = parse_commands();
     let app_config = create_config(&commands)?;
-    print!("{:?}\n\n", app_config);
 
     // Logging can only be initialized after we fetched the configuration parameters.
     let _guard = init_tracing(&app_config.logging);
     log_commands_and_config(&commands, &app_config);
 
-    // let sdk_config = create_aws_config(&app_config.aws).await;
-    // event!(Level::DEBUG, "Config {:?}", sdk_config);
-
-    let app_state = AppState {
-        aws_config: app_config.aws,
-        profiles: Vec::new(),
-        regions: Vec::new(),
-        services: Vec::new(),
-        selected_profile: "".into(),
-        sdk_config: None,
-    };
-
-    let root_component = Root::new(&app_state);
+    let root_component = Root::new(&app_config);
     let app = App::new(root_component)?;
     app.run()
 }

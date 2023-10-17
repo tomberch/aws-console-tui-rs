@@ -7,6 +7,8 @@ use super::awsservice::AwsServices;
 use super::profiles::Profiles;
 use super::regions::Regions;
 use super::services::Services;
+use super::status::Status;
+use crate::config::config::AppConfig;
 use crate::tui::app::AppState;
 use crate::tui::config::TUI_CONFIG;
 
@@ -15,26 +17,23 @@ pub struct Components<'a> {
     regions: Regions<'a>,
     services: Services<'a>,
     aws_service: AwsServices<'a>,
+    status: Status<'a>,
 }
 
 pub struct Root<'a> {
-    pub app_state: &'a AppState,
+    pub app_config: &'a AppConfig,
     components: Components<'a>,
 }
 impl<'a> Root<'a> {
-    pub fn new(app_state: &'a AppState) -> Self {
-        let profiles = Profiles::new(app_state);
-        let regions = Regions::new(app_state);
-        let services = Services::new(app_state);
-        let aws_services = AwsServices::new(app_state);
-
+    pub fn new(app_config: &'a AppConfig) -> Self {
         Root {
-            app_state,
+            app_config,
             components: Components {
-                profiles: profiles,
-                regions: regions,
-                services: services,
-                aws_service: aws_services,
+                profiles: Profiles::new(app_config),
+                regions: Regions::new(app_config),
+                services: Services::new(app_config),
+                aws_service: AwsServices::new(app_config),
+                status: Status::new(app_config),
             },
         }
     }
@@ -42,10 +41,15 @@ impl<'a> Root<'a> {
     pub fn render(&mut self, frame: &mut Frame<'_, CrosstermBackend<Stdout>>, area: Rect) {
         frame.render_widget(Block::new().style(TUI_CONFIG.root), frame.size());
 
+        let screen_layout = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints(vec![Constraint::Min(1), Constraint::Length(4)])
+            .split(area);
+
         let main_layout = Layout::default()
             .direction(Direction::Horizontal)
             .constraints(vec![Constraint::Percentage(20), Constraint::Percentage(80)])
-            .split(area);
+            .split(screen_layout[0]);
 
         let list_layout = Layout::default()
             .direction(Direction::Vertical)
@@ -56,10 +60,19 @@ impl<'a> Root<'a> {
             ])
             .split(main_layout[0]);
 
+        frame.render_widget(
+            Block::new()
+                .border_style(Style::new().fg(Color::White))
+                .borders(Borders::ALL)
+                .border_type(BorderType::Rounded),
+            screen_layout[1],
+        );
+
         self.components.profiles.render(frame, list_layout[0]);
         self.components.regions.render(frame, list_layout[1]);
         self.components.services.render(frame, list_layout[2]);
         self.components.aws_service.render(frame, main_layout[1]);
+        self.components.status.render(frame, screen_layout[1]);
     }
 
     pub fn handle_key_event(&mut self, key: KeyEvent) {

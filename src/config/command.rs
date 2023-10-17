@@ -1,11 +1,10 @@
 use std::collections::HashMap;
 
-use crate::tui;
-
 use clap::{builder::PossibleValuesParser, command, Arg};
 
+use crate::ui;
+
 pub(crate) const CONFIG_FILE_PATH: &str = "config_file_path";
-pub(crate) const PROFILE_KEY: &str = "aws.profile";
 pub(crate) const CREDENTIALS_KEY: &str = "aws.credentialsPath";
 pub(crate) const LOG_LEVEL_KEY: &str = "logging.level";
 pub(crate) const LOG_FILE_PATH: &str = "logging.logFilePath";
@@ -16,14 +15,6 @@ pub fn parse_commands() -> HashMap<String, String> {
         .author("Thomas Berchtold")
         .about("An AWS console within your terminal.")
         .long_about(get_long_about())
-        .arg(
-            Arg::new(PROFILE_KEY)
-                .value_name("PROFILE")
-                .short('p')
-                .long(PROFILE_KEY)
-                .help("Set AWS profile name")
-                .long_help("Set the AWS profile name to access the account and the services"),
-        )
         .arg(
             Arg::new(CREDENTIALS_KEY)
                 .value_name("CREDENTIALS")
@@ -69,10 +60,6 @@ pub fn parse_commands() -> HashMap<String, String> {
 fn create_arguments(matches: clap::ArgMatches) -> HashMap<String, String> {
     let mut arguments = HashMap::new();
 
-    if let Some(profile) = matches.get_one::<String>(PROFILE_KEY) {
-        arguments.insert(PROFILE_KEY.to_string(), profile.clone());
-    }
-
     if let Some(aws_credentials_path) = matches.get_one::<String>(CREDENTIALS_KEY) {
         arguments.insert(CREDENTIALS_KEY.to_string(), aws_credentials_path.clone());
     }
@@ -93,7 +80,7 @@ fn create_arguments(matches: clap::ArgMatches) -> HashMap<String, String> {
 }
 
 fn get_long_about() -> String {
-    let mut logo = tui::logo::large_logo();
+    let mut logo = ui::logo::large_logo();
     let text = "\n\naws-console-tui provides a AWS console directly within your terminal to create, browse, or edit your services.";
     logo.push_str(text);
     return logo;
