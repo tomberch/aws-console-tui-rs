@@ -2,14 +2,15 @@ use crate::config::{command::parse_commands, logging::init_tracing};
 
 use anyhow::Result;
 use config::config::{create_config, AppConfig};
+use state::manager::StateManager;
 use std::collections::HashMap;
+use tokio_util::sync::CancellationToken;
 use tracing::{event, span, Level};
-use tui::app::App;
+use ui::manager::UIManager;
 
 mod config;
 mod repository;
 mod state;
-mod tui;
 mod ui;
 
 #[tokio::main]
@@ -21,9 +22,17 @@ async fn main() -> Result<()> {
     let _guard = init_tracing(&app_config.logging);
     log_commands_and_config(&commands, &app_config);
 
-    let root_component = Root::new(&app_config);
-    let app = App::new(root_component)?;
-    app.run()
+    // Loop Startup
+    let cancellation_token = CancellationToken::new();
+    let (state_store, state_rx) = StateManager::new(app_config);
+    let (ui_manager, action_rx) = UIManager::new();
+
+    tokio::try_join!(
+        state_store.run(action_rx, cancellation_token.clone()),
+        ui_manager.run(state_rx, cancellation_token.clone()),
+    )?;
+
+    Ok(())
 }
 
 fn log_commands_and_config(commands: &HashMap<String, String>, app_config: &AppConfig) {

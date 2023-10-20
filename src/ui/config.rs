@@ -24,7 +24,7 @@ pub struct KeyDescription<'a> {
     pub key_modifier: KeyModifiers,
 }
 
-const CTRL: &str = &"CTRL";
+const CTRL: &str = "CTRL";
 const FOCUS_PROFILES_CHAR: char = 'l';
 const FOCUS_REGIONS_CHAR: char = 'r';
 const FOCUS_SERVICES_CHAR: char = 's';
@@ -67,7 +67,7 @@ pub const TUI_CONFIG: TuiConfig = TuiConfig {
     },
     list_config: ListConfig {
         selected_style: Style::new().fg(Color::LightGreen),
-        selected_symbol: &">",
+        selected_symbol: ">",
         selection_up: KeyCode::Up,
         selection_down: KeyCode::Down,
         do_selection: KeyCode::Enter,

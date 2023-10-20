@@ -1,3 +1,3 @@
 pub mod actions;
+pub mod appstate;
 pub mod manager;
-pub mod state;

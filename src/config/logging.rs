@@ -18,7 +18,7 @@ pub fn init_tracing(logging_config: &LoggingConfig) -> Option<WorkerGuard> {
         return Option::None;
     }
 
-    return Option::None;
+    Option::None
 }
 
 //
@@ -49,7 +49,7 @@ fn register_file_and_console_logging(log_level: &str, log_file_path: &str) -> Wo
         .with(console_layer)
         .init();
 
-    return guard;
+    guard
 }
 
 fn register_file_logging(log_level: &str, log_file_path: &str) -> WorkerGuard {
@@ -65,7 +65,7 @@ fn register_file_logging(log_level: &str, log_file_path: &str) -> WorkerGuard {
 
     tracing_subscriber::registry().with(file_layer).init();
 
-    return guard;
+    guard
 }
 
 fn register_console_logging(log_level: &str) {

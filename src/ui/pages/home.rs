@@ -2,42 +2,73 @@ use std::io::Stdout;
 
 use crossterm::event::KeyEvent;
 use ratatui::{prelude::*, widgets::*};
+use tokio::sync::mpsc::UnboundedSender;
 
-use super::awsservice::AwsServices;
-use super::profiles::Profiles;
-use super::regions::Regions;
-use super::services::Services;
-use super::status::Status;
-use crate::config::config::AppConfig;
-use crate::tui::app::AppState;
-use crate::tui::config::TUI_CONFIG;
+use crate::state::actions::actions::Action;
+use crate::state::appstate::{AppState, ComponentType};
+use crate::ui::component::profiles::ProfilesComponent;
+use crate::ui::component::regions::RegionsComponent;
+use crate::ui::component::status::StatusComponent;
+use crate::ui::component::Component;
+use crate::ui::config::TUI_CONFIG;
 
-pub struct Components<'a> {
-    profiles: Profiles<'a>,
-    regions: Regions<'a>,
-    services: Services<'a>,
-    aws_service: AwsServices<'a>,
-    status: Status<'a>,
+struct Props {}
+
+impl From<&AppState> for Props {
+    fn from(app_state: &AppState) -> Self {
+        Props {}
+    }
 }
 
-pub struct Root<'a> {
-    pub app_config: &'a AppConfig,
-    components: Components<'a>,
+pub struct HomePage {
+    pub action_tx: UnboundedSender<Action>,
+    props: Props,
+    profiles_component: ProfilesComponent,
+    regions_component: RegionsComponent,
+    status_component: StatusComponent,
 }
-impl<'a> Root<'a> {
-    pub fn new(app_config: &'a AppConfig) -> Self {
-        Root {
-            app_config,
-            components: Components {
-                profiles: Profiles::new(app_config),
-                regions: Regions::new(app_config),
-                services: Services::new(app_config),
-                aws_service: AwsServices::new(app_config),
-                status: Status::new(app_config),
-            },
+
+impl Component for HomePage {
+    fn new(app_state: &AppState, action_tx: UnboundedSender<Action>) -> Self
+    where
+        Self: Sized,
+    {
+        HomePage {
+            action_tx: action_tx.clone(),
+            props: Props::from(app_state),
+            profiles_component: ProfilesComponent::new(app_state, action_tx.clone()),
+            regions_component: RegionsComponent::new(app_state, action_tx.clone()),
+            status_component: StatusComponent::new(app_state, action_tx.clone()),
         }
     }
 
+    fn move_with_state(self, app_state: &AppState) -> Self
+    where
+        Self: Sized,
+    {
+        HomePage {
+            props: Props::from(app_state),
+            // propagate the update to the child components
+            profiles_component: self.profiles_component.move_with_state(app_state),
+            regions_component: self.regions_component.move_with_state(app_state),
+            status_component: self.status_component.move_with_state(app_state),
+            ..self
+        }
+    }
+
+    fn component_type(&self) -> ComponentType {
+        ComponentType::Home
+    }
+
+    fn handle_key_event(&mut self, key: KeyEvent) -> anyhow::Result<()> {
+        self.profiles_component.handle_key_event(key)?;
+        self.regions_component.handle_key_event(key)?;
+
+        Ok(())
+    }
+}
+
+impl HomePage {
     pub fn render(&mut self, frame: &mut Frame<'_, CrosstermBackend<Stdout>>, area: Rect) {
         frame.render_widget(Block::new().style(TUI_CONFIG.root), frame.size());
 
@@ -68,51 +99,10 @@ impl<'a> Root<'a> {
             screen_layout[1],
         );
 
-        self.components.profiles.render(frame, list_layout[0]);
-        self.components.regions.render(frame, list_layout[1]);
-        self.components.services.render(frame, list_layout[2]);
-        self.components.aws_service.render(frame, main_layout[1]);
-        self.components.status.render(frame, screen_layout[1]);
-    }
-
-    pub fn handle_key_event(&mut self, key: KeyEvent) {
-        match key.code {
-            val if TUI_CONFIG.key_config.focus_profiles.key_code == val
-                && TUI_CONFIG.key_config.focus_profiles.key_modifier == key.modifiers =>
-            {
-                self.clear_focus();
-                self.components.profiles.has_focus = true;
-            }
-            val if TUI_CONFIG.key_config.focus_regions.key_code == val
-                && TUI_CONFIG.key_config.focus_regions.key_modifier == key.modifiers =>
-            {
-                self.clear_focus();
-                self.components.regions.has_focus = true;
-            }
-            val if TUI_CONFIG.key_config.focus_services.key_code == val
-                && TUI_CONFIG.key_config.focus_services.key_modifier == key.modifiers =>
-            {
-                self.clear_focus();
-                self.components.services.has_focus = true;
-            }
-            val if TUI_CONFIG.key_config.focus_aws_service.key_code == val
-                && TUI_CONFIG.key_config.focus_aws_service.key_modifier == key.modifiers =>
-            {
-                self.clear_focus();
-                self.components.aws_service.has_focus = true;
-            }
-            _ => {}
-        };
-
-        if self.components.profiles.has_focus {
-            self.components.profiles.handle_key_events(key);
-        }
-    }
-
-    fn clear_focus(&mut self) {
-        self.components.profiles.has_focus = false;
-        self.components.regions.has_focus = false;
-        self.components.services.has_focus = false;
-        self.components.aws_service.has_focus = false;
+        self.profiles_component.render(frame, list_layout[0]);
+        self.regions_component.render(frame, list_layout[1]);
+        // self.components.services.render(frame, list_layout[2]);
+        // self.components.aws_service.render(frame, main_layout[1]);
+        self.status_component.render(frame, screen_layout[1]);
     }
 }

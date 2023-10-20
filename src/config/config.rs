@@ -13,10 +13,9 @@ use super::command::CONFIG_FILE_PATH;
 const CONFIG_FILE_NAME: &str = "config.toml";
 const AWS_CREDENTIALS_FILE: &str = ".aws/credentials";
 
-#[derive(Default, Debug, Deserialize, Serialize)]
+#[derive(Clone, Default, Debug, Deserialize, Serialize)]
 #[serde(default, rename_all = "camelCase")]
 pub struct AWSConfig {
-    pub profile: String,
     pub credentials_path: PathBuf,
     pub profiles: Vec<String>,
     pub regions: Vec<String>,
@@ -58,13 +57,12 @@ pub fn create_config(arguments: &HashMap<String, String>) -> Result<AppConfig> {
         fig = fig.merge(Serialized::default(key, value));
     }
 
-    return fig
-        .extract::<AppConfig>()
-        .with_context(|| format!("Cannot create app config"));
+    fig.extract::<AppConfig>()
+        .with_context(|| "Cannot create app config".to_string())
 }
 
 fn create_default_values() -> AppConfig {
-    return AppConfig {
+    AppConfig {
         aws: AWSConfig {
             credentials_path: get_default_aws_credential_path(),
             ..Default::default()
@@ -73,8 +71,7 @@ fn create_default_values() -> AppConfig {
             level: "WARN".to_string(),
             ..Default::default()
         },
-        ..Default::default()
-    };
+    }
 }
 
 fn get_default_config_path() -> PathBuf {
@@ -86,7 +83,7 @@ fn get_default_config_path() -> PathBuf {
     };
 
     config_path.push(CONFIG_FILE_NAME);
-    return config_path;
+    config_path
 }
 
 fn get_default_aws_credential_path() -> PathBuf {
@@ -113,7 +110,6 @@ mod tests_config {
 
         let app_config = create_config(&commands).unwrap();
 
-        assert_eq!(app_config.aws.profile, "");
         assert_eq!(
             app_config.aws.credentials_path,
             get_default_aws_credential_path()
@@ -178,7 +174,6 @@ mod tests_config {
     fn test_config_file() {
         let config_file = r#"
     [aws]
-    profile = "dev"
     credentialsPath = "/home/test"
     profiles = ["dev", "prod", "staging"]
     regions = ["eu-central-1", "eu-central-2"]
@@ -210,7 +205,6 @@ mod tests_config {
 
         let app_config = create_config(&commands).unwrap();
 
-        assert_eq!(app_config.aws.profile, "dev");
         assert_eq!(
             app_config.aws.credentials_path.to_str().unwrap(),
             "/home/test"

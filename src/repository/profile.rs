@@ -20,6 +20,10 @@ pub fn get_available_profiles(aws_config: &AWSConfig) -> Result<Vec<String>> {
     Ok(profiles)
 }
 
+pub fn is_env_profile(profile_name: &str) -> bool {
+    get_profile_from_env().unwrap_or_default() == profile_name
+}
+
 fn get_profile_from_env() -> Option<String> {
     let access_key = env::var(AWS_ACCESS_KEY_ID).unwrap_or("".into());
     let secret_key = env::var(AWS_SECRET_ACCESS_KEY).unwrap_or("".into());

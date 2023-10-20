@@ -54,7 +54,7 @@ pub fn parse_commands() -> HashMap<String, String> {
         )
         .get_matches();
 
-    return create_arguments(matches);
+    create_arguments(matches)
 }
 
 fn create_arguments(matches: clap::ArgMatches) -> HashMap<String, String> {
@@ -76,12 +76,12 @@ fn create_arguments(matches: clap::ArgMatches) -> HashMap<String, String> {
         arguments.insert(CONSOLE_KEY.to_string(), "yes".to_string());
     }
 
-    return arguments;
+    arguments
 }
 
 fn get_long_about() -> String {
     let mut logo = ui::logo::large_logo();
     let text = "\n\naws-console-tui provides a AWS console directly within your terminal to create, browse, or edit your services.";
     logo.push_str(text);
-    return logo;
+    logo
 }
