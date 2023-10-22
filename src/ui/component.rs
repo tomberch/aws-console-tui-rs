@@ -8,6 +8,7 @@ use crate::state::{
 
 pub mod profiles;
 pub mod regions;
+pub mod services;
 pub mod status;
 
 pub trait Component {

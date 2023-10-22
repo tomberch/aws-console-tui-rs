@@ -2,6 +2,7 @@ use std::{cmp::min, io::Stdout};
 
 use anyhow::Context;
 use crossterm::event::KeyEvent;
+
 use ratatui::{
     prelude::{Alignment, CrosstermBackend, Rect},
     style::{Color, Style},
@@ -13,8 +14,8 @@ use tokio::sync::mpsc::UnboundedSender;
 
 use crate::{
     state::{
-        actions::actions::Action,
-        appstate::{AppState, ComponentType},
+        actions::actions::{Action, ServiceAction},
+        appstate::{AWSService, AppState, ComponentType},
     },
     ui::config::TUI_CONFIG,
 };
@@ -22,39 +23,44 @@ use crate::{
 use super::Component;
 
 struct Props {
-    region_names: Vec<String>,
     has_focus: bool,
+    is_active_profile_set: bool,
 }
 
 impl From<&AppState> for Props {
     fn from(app_state: &AppState) -> Self {
         Props {
-            region_names: match &app_state.active_profile {
-                Some(active_profile) => active_profile.regions.clone(),
-                None => vec![],
-            },
-            has_focus: matches!(app_state.focus_component, ComponentType::Regions),
+            has_focus: matches!(app_state.focus_component, ComponentType::Services),
+            is_active_profile_set: app_state.active_profile.is_some(),
         }
     }
 }
-pub struct RegionsComponent {
+pub struct ServicesComponent<'a> {
     action_tx: UnboundedSender<Action>,
     props: Props,
 
+    service_names: [&'a str; 5],
     selected_index: u16,
-    active_region_index: Option<u16>,
+    active_service_index: Option<u16>,
 }
 
-impl Component for RegionsComponent {
+impl<'a> Component for ServicesComponent<'a> {
     fn new(app_state: &AppState, action_tx: UnboundedSender<Action>) -> Self
     where
         Self: Sized,
     {
-        RegionsComponent {
+        ServicesComponent {
             action_tx: action_tx.clone(),
             props: Props::from(app_state),
             selected_index: 0,
-            active_region_index: None,
+            service_names: [
+                TUI_CONFIG.services.cloud_watch_logs,
+                TUI_CONFIG.services.dynamodb,
+                TUI_CONFIG.services.eks,
+                TUI_CONFIG.services.s3_simple_storage_service,
+                TUI_CONFIG.services.service_catalog,
+            ],
+            active_service_index: None,
         }
     }
 
@@ -62,20 +68,20 @@ impl Component for RegionsComponent {
     where
         Self: Sized,
     {
-        RegionsComponent {
+        ServicesComponent {
             props: Props::from(app_state),
             ..self
         }
     }
 
     fn component_type(&self) -> ComponentType {
-        ComponentType::Regions
+        ComponentType::Services
     }
 
     fn handle_key_event(&mut self, key: KeyEvent) -> anyhow::Result<()> {
         if !self.props.has_focus {
-            if TUI_CONFIG.key_config.focus_regions.key_code == key.code
-                && TUI_CONFIG.key_config.focus_regions.key_modifier == key.modifiers
+            if TUI_CONFIG.key_config.focus_services.key_code == key.code
+                && TUI_CONFIG.key_config.focus_services.key_modifier == key.modifiers
             {
                 self.action_tx
                     .send(Action::SetFocus {
@@ -96,7 +102,7 @@ impl Component for RegionsComponent {
                     self.selected_index = min(self.selected_index + 1, self.get_list_len() - 1);
                 }
                 val if TUI_CONFIG.list_config.do_selection == val => {
-                    self.set_active_region(self.selected_index)?;
+                    self.set_active_service(self.selected_index)?;
                 }
                 _ => {}
             };
@@ -106,20 +112,20 @@ impl Component for RegionsComponent {
     }
 }
 
-impl RegionsComponent {
+impl<'a> ServicesComponent<'a> {
     fn get_list_len(&self) -> u16 {
-        self.props.region_names.len().try_into().unwrap()
+        self.service_names.len().try_into().unwrap()
     }
 
     fn get_list_item_text(&self, index: usize, list_item_string: String) -> Text {
-        let is_active_profile_index = match self.active_region_index {
+        let is_active_service_index = match self.active_service_index {
             None => false,
             Some(active_index) => usize::try_from(active_index)
                 .map(|active_index| active_index == index)
                 .unwrap_or(false),
         };
 
-        if is_active_profile_index {
+        if is_active_service_index {
             Text::styled(
                 format!("**{}", list_item_string),
                 Style::default().fg(Color::Yellow),
@@ -129,35 +135,52 @@ impl RegionsComponent {
         }
     }
 
-    fn set_active_region(&mut self, index: u16) -> anyhow::Result<()> {
-        self.active_region_index = Some(index);
-        let _profile_name = &self.props.region_names[usize::from(index)];
+    fn set_active_service(&mut self, index: u16) -> anyhow::Result<()> {
+        self.active_service_index = Some(index);
+
+        self.action_tx.send(Action::ServiceAction {
+            action: ServiceAction::SelectService {
+                service: self.get_variant_for_selected_service(index),
+            },
+        })?;
 
         Ok(())
+    }
 
-        // else {
-        //     let aws_config = create_aws_config(&self.app_state.aws_config).await;
-        // }
+    fn get_variant_for_selected_service(&self, index: u16) -> AWSService {
+        let service_name = self.service_names[usize::from(index)];
+        match service_name {
+            val if TUI_CONFIG.services.cloud_watch_logs == val => AWSService::CloudWatchLogs,
+            val if TUI_CONFIG.services.dynamodb == val => AWSService::DynamoDB,
+            val if TUI_CONFIG.services.eks == val => AWSService::Eks,
+            val if TUI_CONFIG.services.s3_simple_storage_service == val => AWSService::S3,
+            val if TUI_CONFIG.services.service_catalog == val => AWSService::ServiceCatalog,
+            _ => AWSService::None,
+        }
     }
 
     pub fn render(&mut self, frame: &mut Frame<'_, CrosstermBackend<Stdout>>, area: Rect) {
         let list_items = self
-            .props
-            .region_names
-            .iter()
+            .service_names
+            .into_iter()
             .enumerate()
             .map(|(index, element)| ListItem::new(self.get_list_item_text(index, element.into())))
             .collect::<Vec<ListItem>>();
 
-        let mut list_state = ListState::default().with_selected(Some(self.selected_index.into()));
+        let selected_index = if self.props.is_active_profile_set {
+            Some(self.selected_index.into())
+        } else {
+            None
+        };
+        let mut list_state = ListState::default().with_selected(selected_index);
 
         frame.render_stateful_widget(
             List::new(list_items)
                 .block(
                     Block::default()
                         .title(format!(
-                            " Regions [{}] ",
-                            TUI_CONFIG.key_config.focus_regions.key_string
+                            " Services [{}] ",
+                            TUI_CONFIG.key_config.focus_services.key_string
                         ))
                         .title_alignment(Alignment::Center)
                         .border_style(if self.props.has_focus {

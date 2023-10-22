@@ -1,4 +1,4 @@
-use crate::state::appstate::ComponentType;
+use crate::state::appstate::{AWSService, ComponentType};
 
 #[derive(Debug, Clone)]
 pub enum ProfileAction {
@@ -6,7 +6,13 @@ pub enum ProfileAction {
 }
 
 #[derive(Debug, Clone)]
+pub enum ServiceAction {
+    SelectService { service: AWSService },
+}
+
+#[derive(Debug, Clone)]
 pub enum Action {
     SetFocus { component_type: ComponentType },
     ProfileAction { action: ProfileAction },
+    ServiceAction { action: ServiceAction },
 }

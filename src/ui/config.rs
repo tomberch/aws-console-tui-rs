@@ -9,9 +9,13 @@ pub struct TuiConfig<'a> {
     pub non_focus_border: Style,
     pub key_config: KeyConfig<'a>,
     pub list_config: ListConfig<'a>,
+    pub services: Services<'a>,
+    pub messages: Messages<'a>,
 }
 
 pub struct KeyConfig<'a> {
+    pub cycle_forward: KeyDescription<'a>,
+    pub cycle_backward: KeyDescription<'a>,
     pub focus_profiles: KeyDescription<'a>,
     pub focus_regions: KeyDescription<'a>,
     pub focus_services: KeyDescription<'a>,
@@ -25,10 +29,8 @@ pub struct KeyDescription<'a> {
 }
 
 const CTRL: &str = "CTRL";
-const FOCUS_PROFILES_CHAR: char = 'l';
-const FOCUS_REGIONS_CHAR: char = 'r';
-const FOCUS_SERVICES_CHAR: char = 's';
-const FOCUS_AWS_SERVICES_CHAR: char = 'a';
+const TAB: &str = "TAB";
+const SHIFT: &str = "SHIFT";
 
 pub struct ListConfig<'a> {
     pub selected_symbol: &'a str,
@@ -38,30 +40,53 @@ pub struct ListConfig<'a> {
     pub do_selection: KeyCode,
 }
 
+pub struct Services<'a> {
+    pub cloud_watch_logs: &'a str,
+    pub dynamodb: &'a str,
+    pub eks: &'a str,
+    pub s3_simple_storage_service: &'a str,
+    pub service_catalog: &'a str,
+}
+
+pub struct Messages<'a> {
+    pub pending_action: &'a str,
+    pub error_caller_identity: &'a str,
+}
+
 pub const TUI_CONFIG: TuiConfig = TuiConfig {
     tick_rate_in_ms: 250,
     root: Style::new().bg(DARK_BLUE),
     focus_border: Style::new().fg(Color::Green),
     non_focus_border: Style::new().fg(Color::White),
     key_config: KeyConfig {
+        cycle_forward: KeyDescription {
+            key_string: TAB,
+            key_code: KeyCode::Tab,
+            key_modifier: KeyModifiers::NONE,
+        },
+        cycle_backward: KeyDescription {
+            key_string: formatcp!("{}-{}", SHIFT, TAB),
+            key_code: KeyCode::BackTab,
+            key_modifier: KeyModifiers::NONE,
+        },
         focus_profiles: KeyDescription {
-            key_string: formatcp!("{}-{}", CTRL, FOCUS_PROFILES_CHAR),
-            key_code: KeyCode::Char(FOCUS_PROFILES_CHAR),
+            key_string: formatcp!("{}-{}", CTRL, "1"),
+            key_code: KeyCode::Char('1'),
             key_modifier: KeyModifiers::CONTROL,
         },
         focus_regions: KeyDescription {
-            key_string: formatcp!("{}-{}", CTRL, FOCUS_REGIONS_CHAR),
-            key_code: KeyCode::Char(FOCUS_REGIONS_CHAR),
+            key_string: formatcp!("{}-{}", CTRL, "2"),
+            key_code: KeyCode::Char('2'),
             key_modifier: KeyModifiers::CONTROL,
         },
         focus_services: KeyDescription {
-            key_string: formatcp!("{}-{}", CTRL, FOCUS_SERVICES_CHAR),
-            key_code: KeyCode::Char(FOCUS_SERVICES_CHAR),
+            key_string: formatcp!("{}-{}", CTRL, "3"),
+            key_code: KeyCode::Char('3'),
             key_modifier: KeyModifiers::CONTROL,
         },
         focus_aws_service: KeyDescription {
-            key_string: formatcp!("{}-{}", CTRL, FOCUS_AWS_SERVICES_CHAR),
-            key_code: KeyCode::Char(FOCUS_AWS_SERVICES_CHAR),
+            key_string: formatcp!("{}-{}", CTRL, "4"),
+            key_code: KeyCode::Char('4'),
             key_modifier: KeyModifiers::CONTROL,
         },
     },
@@ -71,6 +96,18 @@ pub const TUI_CONFIG: TuiConfig = TuiConfig {
         selection_up: KeyCode::Up,
         selection_down: KeyCode::Down,
         do_selection: KeyCode::Enter,
+    },
+    services: Services {
+        cloud_watch_logs: "CloudWatch Logs",
+        dynamodb: "DynamoDB",
+        eks: "EKS Elastic Kubernetes Service",
+        s3_simple_storage_service: "S3 Simple Storage Service",
+        service_catalog: "Service Catalog",
+    },
+    messages: Messages {
+        pending_action: "Pending action. Please wait ...",
+        error_caller_identity:
+            "Error: Cloud not fetch caller identity. Press <CTRL-m> for more information",
     },
 };
 

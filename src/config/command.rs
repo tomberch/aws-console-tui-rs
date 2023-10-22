@@ -4,8 +4,8 @@ use clap::{builder::PossibleValuesParser, command, Arg};
 
 use crate::ui;
 
-pub(crate) const CONFIG_FILE_PATH: &str = "config_file_path";
 pub(crate) const CREDENTIALS_KEY: &str = "aws.credentialsPath";
+pub(crate) const ENDPOINT_KEY: &str = "aws.endpoint";
 pub(crate) const LOG_LEVEL_KEY: &str = "logging.level";
 pub(crate) const LOG_FILE_PATH: &str = "logging.logFilePath";
 pub(crate) const CONSOLE_KEY: &str = "logging.logToConsole";
@@ -23,6 +23,16 @@ pub fn parse_commands() -> HashMap<String, String> {
                 .help("Set custom AWS credentials path")
                 .long_help(
                     "Path to a custom AWS credentials file. If omitted, default values are used",
+                ),
+        )
+        .arg(
+            Arg::new(ENDPOINT_KEY)
+                .value_name("ENDPOINT")
+                .short('e')
+                .long("endpoint")
+                .help("Set endpoint for AWS services")
+                .long_help(
+                    "Alternative endpoint for the invocation of the AWS services",
                 ),
         )
         .arg(
@@ -62,6 +72,10 @@ fn create_arguments(matches: clap::ArgMatches) -> HashMap<String, String> {
 
     if let Some(aws_credentials_path) = matches.get_one::<String>(CREDENTIALS_KEY) {
         arguments.insert(CREDENTIALS_KEY.to_string(), aws_credentials_path.clone());
+    }
+
+    if let Some(aws_endpoint) = matches.get_one::<String>(ENDPOINT_KEY) {
+        arguments.insert(ENDPOINT_KEY.to_string(), aws_endpoint.clone());
     }
 
     if let Some(log_level) = matches.get_one::<String>(LOG_LEVEL_KEY) {

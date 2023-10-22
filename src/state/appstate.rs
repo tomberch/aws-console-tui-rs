@@ -12,6 +12,7 @@ pub enum ComponentType {
     Home,
     Profiles,
     Regions,
+    Services,
     Status,
 }
 
@@ -37,6 +38,21 @@ pub struct RegionsState {
     pub region_names: Vec<String>,
 }
 
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub enum AWSService {
+    None,
+    CloudWatchLogs,
+    Eks,
+    DynamoDB,
+    S3,
+    ServiceCatalog,
+}
+
+#[derive(Clone, Debug)]
+pub struct ServiceState {
+    pub selected_service: AWSService,
+}
+
 #[derive(Clone, Debug, Default)]
 pub struct StatusState {
     pub message: String,
@@ -51,6 +67,7 @@ pub struct AppState {
     pub active_profile: Option<Profile>,
     pub profile_state: ProfilesState,
     pub region_state: RegionsState,
+    pub service_state: ServiceState,
     pub status_state: StatusState,
 }
 
@@ -71,6 +88,9 @@ impl AppState {
                 message: "No profile active. Please select profile and press <Enter>".into(),
                 err_message: "".into(),
                 err_message_backtrace: "".into(),
+            },
+            service_state: ServiceState {
+                selected_service: AWSService::None,
             },
         }
     }

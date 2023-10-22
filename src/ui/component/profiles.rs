@@ -2,6 +2,7 @@ use std::{cmp::min, io::Stdout};
 
 use anyhow::Context;
 use crossterm::event::KeyEvent;
+
 use ratatui::{
     prelude::{Alignment, CrosstermBackend, Rect},
     style::{Color, Style},
@@ -171,19 +172,6 @@ impl ProfilesComponent {
                 .highlight_symbol(TUI_CONFIG.list_config.selected_symbol),
             area,
             &mut list_state,
-        );
-
-        let mut scrollbar_state = ScrollbarState::default()
-            .content_length(self.get_list_len())
-            .position(self.selected_index);
-        frame.render_stateful_widget(
-            Scrollbar::default()
-                .begin_symbol(None)
-                .end_symbol(None)
-                .track_symbol(None)
-                .thumb_symbol("▐"),
-            area,
-            &mut scrollbar_state,
         );
     }
 }

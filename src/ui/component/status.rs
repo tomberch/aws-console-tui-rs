@@ -67,10 +67,11 @@ impl Component for StatusComponent {
 
 impl StatusComponent {
     pub fn render(&mut self, frame: &mut Frame<'_, CrosstermBackend<Stdout>>, area: Rect) {
-        let status_text = vec![
-            Line::styled(&self.props.message, Style::default().fg(Color::DarkGray)),
-            Line::styled(&self.props.err_message, Style::default().fg(Color::Red)),
-        ];
+        let status_text = if self.props.err_message.is_empty() {
+            Line::styled(&self.props.message, Style::default().fg(Color::DarkGray))
+        } else {
+            Line::styled(&self.props.err_message, Style::default().fg(Color::Red))
+        };
 
         frame.render_widget(
             Paragraph::new(status_text).block(

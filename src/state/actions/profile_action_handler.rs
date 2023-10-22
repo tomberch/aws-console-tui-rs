@@ -3,6 +3,7 @@ use tokio::sync::mpsc::UnboundedSender;
 use crate::{
     repository::{ec2::EC2Repository, login::LoginRepository},
     state::appstate::{AppState, Profile},
+    ui::config::TUI_CONFIG,
 };
 
 use super::actions::ProfileAction;
@@ -19,17 +20,15 @@ impl ProfileActionHandler {
             ProfileAction::SelectProfile {
                 profile_name: profile,
             } => {
-                app_state.status_state.message = "Connecting to profile".into();
+                app_state.status_state.message = TUI_CONFIG.messages.pending_action.into();
                 app_state.status_state.err_message = "".into();
                 let _ = state_tx.send(app_state.clone());
-                let _ = ProfileActionHandler::handle_select_profile(&profile, app_state).await;
+                let _result =
+                    ProfileActionHandler::handle_select_profile(&profile, app_state).await;
             }
         }
     }
-    async fn handle_select_profile(
-        profile_name: &str,
-        app_state: &mut AppState,
-    ) -> anyhow::Result<()> {
+    async fn handle_select_profile(profile_name: &str, app_state: &mut AppState) {
         if let Some(active_profile) = app_state.active_profile.take() {
             if active_profile.err_message.is_empty() {
                 app_state
@@ -39,21 +38,45 @@ impl ProfileActionHandler {
             }
         }
 
-        let mut profile = match app_state.profile_state.profiles.remove(profile_name) {
+        let profile = match app_state.profile_state.profiles.remove(profile_name) {
             Some(profile) => profile,
             None => {
                 let config =
                     LoginRepository::create_aws_config(profile_name, &app_state.aws_config).await;
-                match LoginRepository::fetch_caller_identity(&config).await {
-                    Ok(identity) => Profile {
-                        name: profile_name.into(),
-                        sdk_config: config,
-                        account: identity.account,
-                        user: identity.user_id,
-                        err_message: "".into(),
-                        err_message_backtrace: "".into(),
-                        regions: vec![],
-                    },
+                let result = LoginRepository::fetch_caller_identity(&config).await;
+                match result {
+                    Ok(identity) => {
+                        let mut profile = Profile {
+                            name: profile_name.into(),
+                            sdk_config: config,
+                            account: identity.account,
+                            user: identity.user_id,
+                            err_message: "".into(),
+                            err_message_backtrace: "".into(),
+                            regions: vec![],
+                        };
+                        match EC2Repository::describe_regions(
+                            &app_state.aws_config,
+                            &profile.sdk_config,
+                        )
+                        .await
+                        {
+                            Ok(regions) => profile.regions = regions.clone(),
+                            Err(err) => {
+                                profile = Profile {
+                                    name: profile_name.into(),
+                                    sdk_config: profile.sdk_config,
+                                    account: "".into(),
+                                    user: "".into(),
+                                    err_message: TUI_CONFIG.messages.pending_action.into(),
+                                    err_message_backtrace: format!("{:?}", err),
+                                    regions: vec![],
+                                }
+                            }
+                        };
+
+                        profile
+                    }
                     Err(err) => Profile {
                         name: profile_name.into(),
                         sdk_config: config,
@@ -66,9 +89,6 @@ impl ProfileActionHandler {
                 }
             }
         };
-
-        profile.regions =
-            EC2Repository::describe_regions(&app_state.aws_config, &profile.sdk_config).await?;
 
         if profile.err_message.is_empty() {
             app_state.status_state.message = format!(
@@ -85,7 +105,5 @@ impl ProfileActionHandler {
             app_state.status_state.err_message = profile.err_message.clone();
             app_state.status_state.err_message_backtrace = profile.err_message_backtrace.clone();
         }
-
-        Ok(())
     }
 }

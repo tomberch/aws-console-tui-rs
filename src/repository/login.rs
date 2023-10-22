@@ -1,5 +1,5 @@
-use anyhow::Result;
 use aws_config::{profile::profile_file::ProfileFileKind, SdkConfig};
+
 use tracing::{event, Level};
 
 use crate::config::config::AWSConfig;
@@ -35,7 +35,7 @@ impl LoginRepository {
         sdk_config
     }
 
-    pub async fn fetch_caller_identity(config: &SdkConfig) -> Result<AwsCallerIdentity> {
+    pub async fn fetch_caller_identity(config: &SdkConfig) -> anyhow::Result<AwsCallerIdentity> {
         let client = aws_sdk_sts::Client::new(config);
         let response = client.get_caller_identity().send().await?;
 

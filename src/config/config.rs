@@ -8,8 +8,7 @@ use figment::{
     Figment,
 };
 
-use super::command::CONFIG_FILE_PATH;
-
+const CONFIG_FILE_PATH: &str = "config_file_path";
 const CONFIG_FILE_NAME: &str = "config.toml";
 const AWS_CREDENTIALS_FILE: &str = ".aws/credentials";
 
@@ -97,7 +96,7 @@ fn get_default_aws_credential_path() -> PathBuf {
 }
 
 #[cfg(test)]
-mod tests_config {
+mod tests {
 
     use crate::config::command::{CONSOLE_KEY, CREDENTIALS_KEY, LOG_FILE_PATH, LOG_LEVEL_KEY};
 

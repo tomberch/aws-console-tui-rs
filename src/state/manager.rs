@@ -1,7 +1,12 @@
 use tokio::sync::mpsc::{self, UnboundedReceiver, UnboundedSender};
 use tokio_util::sync::CancellationToken;
 
-use crate::{config::config::AppConfig, state::actions::profile_actions::ProfileActionHandler};
+use crate::{
+    config::config::AppConfig,
+    state::actions::{
+        profile_action_handler::ProfileActionHandler, service_action_handler::ServiceActionHandler,
+    },
+};
 
 use super::{actions::actions::Action, appstate::AppState};
 
@@ -41,7 +46,7 @@ impl StateManager {
                     Some(action) = action_rx.recv() => match action {
                         Action::SetFocus { component_type } => app_state.focus_component = component_type,
                         Action::ProfileAction{ action }=>{ProfileActionHandler::handle(self.state_tx.clone(), action, &mut app_state).await},
-
+                        Action::ServiceAction{ action }=>{ServiceActionHandler::handle(self.state_tx.clone(), action, &mut app_state).await},
                 }
             }
 
