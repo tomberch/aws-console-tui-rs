@@ -2,7 +2,7 @@ use tokio::sync::mpsc::UnboundedSender;
 
 use crate::{
     repository::{ec2::EC2Repository, login::LoginRepository},
-    state::appstate::{AppState, Profile},
+    state::appstate::{AWSService, AppState, Profile},
     ui::config::TUI_CONFIG,
 };
 
@@ -20,11 +20,12 @@ impl ProfileActionHandler {
             ProfileAction::SelectProfile {
                 profile_name: profile,
             } => {
+                app_state.status_state.action_pending = true;
                 app_state.status_state.message = TUI_CONFIG.messages.pending_action.into();
                 app_state.status_state.err_message = "".into();
                 let _ = state_tx.send(app_state.clone());
-                let _result =
-                    ProfileActionHandler::handle_select_profile(&profile, app_state).await;
+                let _ = ProfileActionHandler::handle_select_profile(&profile, app_state).await;
+                app_state.status_state.action_pending = false;
             }
         }
     }
@@ -48,12 +49,14 @@ impl ProfileActionHandler {
                     Ok(identity) => {
                         let mut profile = Profile {
                             name: profile_name.into(),
+                            selected_region: config.region().map(|region| region.as_ref().into()),
                             sdk_config: config,
                             account: identity.account,
                             user: identity.user_id,
                             err_message: "".into(),
                             err_message_backtrace: "".into(),
                             regions: vec![],
+                            selected_service: AWSService::None,
                         };
                         match EC2Repository::describe_regions(
                             &app_state.aws_config,
@@ -71,6 +74,8 @@ impl ProfileActionHandler {
                                     err_message: TUI_CONFIG.messages.pending_action.into(),
                                     err_message_backtrace: format!("{:?}", err),
                                     regions: vec![],
+                                    selected_region: None,
+                                    selected_service: AWSService::None,
                                 }
                             }
                         };
@@ -85,6 +90,8 @@ impl ProfileActionHandler {
                         err_message: format!("Error {}. Press <CRL-m> for more information.", err),
                         err_message_backtrace: format!("{:?}", err),
                         regions: vec![],
+                        selected_region: None,
+                        selected_service: AWSService::None,
                     },
                 }
             }

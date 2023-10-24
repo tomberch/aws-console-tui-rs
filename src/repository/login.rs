@@ -37,7 +37,8 @@ impl LoginRepository {
 
     pub async fn fetch_caller_identity(config: &SdkConfig) -> anyhow::Result<AwsCallerIdentity> {
         let client = aws_sdk_sts::Client::new(config);
-        let response = client.get_caller_identity().send().await?;
+        let r = client.get_caller_identity().send().await;
+        let response = r?;
 
         let identity = AwsCallerIdentity {
             account: response.account().unwrap_or_default().to_string(),

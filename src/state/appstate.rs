@@ -14,6 +14,8 @@ pub enum ComponentType {
     Regions,
     Services,
     Status,
+    AWSService,
+    CloudWatch,
 }
 
 #[derive(Clone, Debug)]
@@ -25,6 +27,8 @@ pub struct Profile {
     pub err_message: String,
     pub err_message_backtrace: String,
     pub regions: Vec<String>,
+    pub selected_region: Option<String>,
+    pub selected_service: AWSService,
 }
 
 #[derive(Clone, Debug)]
@@ -48,13 +52,22 @@ pub enum AWSService {
     ServiceCatalog,
 }
 
-#[derive(Clone, Debug)]
-pub struct ServiceState {
-    pub selected_service: AWSService,
+pub struct CloudWatch {
+    log_groups: Vec<CloudWatchLogGroup>,
+    selected_log_group: Option<CloudWatchLogGroup>,
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct CloudWatchLogGroup {
+    name: String,
+    date_created: i64,
+    retention_days: i16,
+    stored_bytes: i64,
 }
 
 #[derive(Clone, Debug, Default)]
 pub struct StatusState {
+    pub action_pending: bool,
     pub message: String,
     pub err_message: String,
     pub err_message_backtrace: String,
@@ -67,7 +80,6 @@ pub struct AppState {
     pub active_profile: Option<Profile>,
     pub profile_state: ProfilesState,
     pub region_state: RegionsState,
-    pub service_state: ServiceState,
     pub status_state: StatusState,
 }
 
@@ -85,12 +97,10 @@ impl AppState {
                 region_names: vec![],
             },
             status_state: StatusState {
+                action_pending: false,
                 message: "No profile active. Please select profile and press <Enter>".into(),
                 err_message: "".into(),
                 err_message_backtrace: "".into(),
-            },
-            service_state: ServiceState {
-                selected_service: AWSService::None,
             },
         }
     }

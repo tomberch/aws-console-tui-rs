@@ -6,6 +6,11 @@ pub enum ProfileAction {
 }
 
 #[derive(Debug, Clone)]
+pub enum RegionAction {
+    SelectRegion { region_name: String },
+}
+
+#[derive(Debug, Clone)]
 pub enum ServiceAction {
     SelectService { service: AWSService },
 }
@@ -13,6 +18,7 @@ pub enum ServiceAction {
 #[derive(Debug, Clone)]
 pub enum Action {
     SetFocus { component_type: ComponentType },
-    ProfileAction { action: ProfileAction },
-    ServiceAction { action: ServiceAction },
+    Profile { action: ProfileAction },
+    Region { action: RegionAction },
+    Service { action: ServiceAction },
 }

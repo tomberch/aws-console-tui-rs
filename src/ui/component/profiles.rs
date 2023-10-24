@@ -7,7 +7,7 @@ use ratatui::{
     prelude::{Alignment, CrosstermBackend, Rect},
     style::{Color, Style},
     text::Text,
-    widgets::{Block, BorderType, Borders, List, ListItem, ListState, Scrollbar, ScrollbarState},
+    widgets::{Block, BorderType, Borders, List, ListItem, ListState},
     Frame,
 };
 use tokio::sync::mpsc::UnboundedSender;
@@ -23,14 +23,14 @@ use crate::{
 use super::Component;
 
 struct Props {
-    profile_names: Vec<String>,
+    items: Vec<String>,
     has_focus: bool,
 }
 
 impl From<&AppState> for Props {
     fn from(app_state: &AppState) -> Self {
         Props {
-            profile_names: app_state.profile_state.profile_names.clone(),
+            items: app_state.profile_state.profile_names.clone(),
             has_focus: matches!(app_state.focus_component, ComponentType::Profiles),
         }
     }
@@ -38,7 +38,6 @@ impl From<&AppState> for Props {
 pub struct ProfilesComponent {
     action_tx: UnboundedSender<Action>,
     props: Props,
-
     selected_index: u16,
     active_profile_index: Option<u16>,
 }
@@ -81,7 +80,7 @@ impl Component for ProfilesComponent {
                     })
                     .context("Could not send action for focus update")?;
             }
-        } else {
+        } else if self.get_list_len() > 0 {
             match key.code {
                 val if TUI_CONFIG.list_config.selection_up == val => {
                     self.selected_index = if self.selected_index > 0 {
@@ -102,48 +101,11 @@ impl Component for ProfilesComponent {
 
         Ok(())
     }
-}
 
-impl ProfilesComponent {
-    fn get_list_len(&self) -> u16 {
-        self.props.profile_names.len().try_into().unwrap()
-    }
-
-    fn get_list_item_text(&self, index: usize, list_item_string: String) -> Text {
-        let is_active_profile_index = match self.active_profile_index {
-            None => false,
-            Some(active_index) => usize::try_from(active_index)
-                .map(|active_index| active_index == index)
-                .unwrap_or(false),
-        };
-
-        if is_active_profile_index {
-            Text::styled(
-                format!("**{}", list_item_string),
-                Style::default().fg(Color::Yellow),
-            )
-        } else {
-            Text::from(list_item_string)
-        }
-    }
-
-    fn set_active_profile(&mut self, index: u16) -> anyhow::Result<()> {
-        self.active_profile_index = Some(index);
-        let profile_name = &self.props.profile_names[usize::from(index)];
-
-        self.action_tx.send(Action::ProfileAction {
-            action: ProfileAction::SelectProfile {
-                profile_name: (profile_name.into()),
-            },
-        })?;
-
-        Ok(())
-    }
-
-    pub fn render(&mut self, frame: &mut Frame<'_, CrosstermBackend<Stdout>>, area: Rect) {
+    fn render(&mut self, frame: &mut Frame<'_, CrosstermBackend<Stdout>>, area: Rect) {
         let list_items = self
             .props
-            .profile_names
+            .items
             .iter()
             .enumerate()
             .map(|(index, element)| ListItem::new(self.get_list_item_text(index, element.into())))
@@ -173,5 +135,49 @@ impl ProfilesComponent {
             area,
             &mut list_state,
         );
+    }
+}
+
+impl ProfilesComponent {
+    fn get_list_len(&self) -> u16 {
+        self.props.items.len().try_into().unwrap()
+    }
+
+    fn get_list_item_text(&self, index: usize, list_item_string: String) -> Text {
+        let is_active_profile_index = match self.active_profile_index {
+            None => false,
+            Some(active_index) => usize::try_from(active_index)
+                .map(|active_index| active_index == index)
+                .unwrap_or(false),
+        };
+
+        if is_active_profile_index {
+            Text::styled(
+                format!("**{}", list_item_string),
+                Style::default().fg(Color::Yellow),
+            )
+        } else {
+            Text::from(list_item_string)
+        }
+    }
+
+    fn set_active_profile(&mut self, index: u16) -> anyhow::Result<()> {
+        if let Some(active_index) = self.active_profile_index {
+            if active_index == index {
+                return Ok(());
+            }
+        }
+
+        self.active_profile_index = Some(index);
+
+        let profile_name = &self.props.items[usize::from(index)];
+
+        self.action_tx.send(Action::Profile {
+            action: ProfileAction::SelectProfile {
+                profile_name: (profile_name.into()),
+            },
+        })?;
+
+        Ok(())
     }
 }

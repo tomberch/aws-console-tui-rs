@@ -1,0 +1,49 @@
+Manifest-Version: 1.0
+Ant-Version: Apache Ant 1.10.8
+Created-By: 1.8.0_282-b08 (Oracle Corporation)
+Main-Class: cloud.localstack.StepFunctionsStarter
+Class-Path: aspectjrt-1.9.7.jar aspectjweaver-1.9.7.jar . AWSAthenaJavaClient-1.11.x.jar AWSBatchJavaClient-1.11.x
+ .jar AWSCloudcastJavaClient-1.11.x.jar AWSDynamoDBJavaModel-1.11.x.ja
+ r AWSECSJavaClient-1.11.x.jar AWSEKSJavaClient-1.11.x.jar AWSEMRConta
+ inersJavaClient-1.11.x.jar AWSEventBridgeJavaClient-1.11.x.jar AWSGlu
+ eDataBrewJavaClient-1.11.x.jar AWSGlueJavaClient-1.11.x.jar AWSJavaCl
+ ientCore-1.11.x.jar AWSJavaClientJmxSPI-1.11.x.jar AWSJavaClientRunti
+ me-1.11.x.jar AWSJavaClientRuntimeConfigOverride-1.11.x.jar AWSJavaCl
+ ientSigners-1.11.x.jar AWSJavaCredentialInterfaces-1.0.jar AWSLambdaJ
+ avaClient-1.11.x.jar AWSSQSJavaClient-1.11.x.jar AWSSageMakerJavaClie
+ nt-1.11.x.jar AWSStepFunctionsJavaClient-1.11.x.jar Apache-HttpCompon
+ ents-HttpClient-4.5.x.jar Apache-HttpComponents-HttpCore-4.4.x.jar Aw
+ sFlowJava-1.0.jar AwsJavaSdk-Core-2.0.jar AwsJavaSdk-Core-Annotations
+ -2.0.jar AwsJavaSdk-Core-Auth-2.0.jar AwsJavaSdk-Core-MetricsSpi-2.0.
+ jar AwsJavaSdk-Core-Profiles-2.0.jar AwsJavaSdk-Core-Regions-2.0.jar 
+ AwsJavaSdk-Core-Utils-2.0.jar AwsJavaSdk-HttpClient-2.0.jar AwsJavaSd
+ k-HttpClient-ApacheClient-2.0.jar JMESPathJava-1.0.jar JakartaCommons
+ -IO-2.5.jar JakartaCommons-codec-1.9.jar JaywayJsonPath-2.0.0.jar Jso
+ n-smart-v2-1.1.jar asm-5.0.4.jar asm-analysis-5.0.4.jar asm-commons-5
+ .0.4.jar asm-tree-5.0.4.jar asm-util-5.0.4.jar asm-xml-5.0.4.jar cdi-
+ core-9.4.18.v20190429.jar cdi-servlet-9.4.18.v20190429.jar commons-cl
+ i-1.2.jar commons-collections-3.2.2.jar commons-lang3-3.4.jar commons
+ -logging-adapters-1.1.1.jar commons-logging-api-1.1.1.jar dagger-2.11
+ .jar gson-2.3.1.jar ion-java-1.5.1.jar jackson-annotations-2.10.x.jar
+  jackson-core-2.10.x.jar jackson-databind-2.10.x.jar jackson-dataform
+ at-cbor-2.6.x.jar javax-websocket-client-impl-9.4.18.v20190429.jar ja
+ vax-websocket-server-impl-9.4.18.v20190429.jar javax.inject.jar javax
+ .websocket-api-1.0.jar jetty-alpn-server-9.4.18.v20190429.jar jetty-a
+ nnotations-9.4.18.v20190429.jar jetty-client-9.4.18.v20190429.jar jet
+ ty-continuation-9.4.18.v20190429.jar jetty-deploy-9.4.18.v20190429.ja
+ r jetty-http-9.4.18.v20190429.jar jetty-io-9.4.18.v20190429.jar jetty
+ -jaas-9.4.18.v20190429.jar jetty-jaspi-9.4.18.v20190429.jar jetty-jmx
+ -9.4.18.v20190429.jar jetty-jndi-9.4.18.v20190429.jar jetty-nosql-9.4
+ .18.v20190429.jar jetty-plus-9.4.18.v20190429.jar jetty-proxy-9.4.18.
+ v20190429.jar jetty-quickstart-9.4.18.v20190429.jar jetty-rewrite-9.4
+ .18.v20190429.jar jetty-schemas-3.1.jar jetty-security-9.4.18.v201904
+ 29.jar jetty-server-9.4.18.v20190429.jar jetty-servlet-9.4.18.v201904
+ 29.jar jetty-servlets-9.4.18.v20190429.jar jetty-setuid-java-1.0.3.ja
+ r jetty-spring-9.4.18.v20190429.jar jetty-util-9.4.18.v20190429.jar j
+ etty-webapp-9.4.18.v20190429.jar jetty-xml-9.4.18.v20190429.jar joda-
+ time-2.8.2.jar lombok.jar reactive-streams-1.0.3.jar servlet-api-3.1.
+ jar slf4j-api-1.7.10.jar websocket-api-9.4.18.v20190429.jar websocket
+ -client-9.4.18.v20190429.jar websocket-common-9.4.18.v20190429.jar we
+ bsocket-server-9.4.18.v20190429.jar websocket-servlet-9.4.18.v2019042
+ 9.jar
+

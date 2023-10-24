@@ -1,4 +1,10 @@
+use std::io::Stdout;
+
 use crossterm::event::KeyEvent;
+use ratatui::{
+    prelude::{CrosstermBackend, Rect},
+    Frame,
+};
 use tokio::sync::mpsc::UnboundedSender;
 
 use crate::state::{
@@ -6,6 +12,7 @@ use crate::state::{
     appstate::{AppState, ComponentType},
 };
 
+pub mod cloud_watch;
 pub mod profiles;
 pub mod regions;
 pub mod services;
@@ -23,4 +30,6 @@ pub trait Component {
     fn component_type(&self) -> ComponentType;
 
     fn handle_key_event(&mut self, key: KeyEvent) -> anyhow::Result<()>;
+
+    fn render(&mut self, frame: &mut Frame<'_, CrosstermBackend<Stdout>>, area: Rect);
 }

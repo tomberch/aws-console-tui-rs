@@ -7,7 +7,7 @@ use ratatui::{
     prelude::{Alignment, CrosstermBackend, Rect},
     style::{Color, Style},
     text::Text,
-    widgets::{Block, BorderType, Borders, List, ListItem, ListState, Scrollbar, ScrollbarState},
+    widgets::{Block, BorderType, Borders, List, ListItem, ListState},
     Frame,
 };
 use tokio::sync::mpsc::UnboundedSender;
@@ -89,7 +89,7 @@ impl<'a> Component for ServicesComponent<'a> {
                     })
                     .context("Could not send action for focus update")?;
             }
-        } else {
+        } else if self.props.is_active_profile_set {
             match key.code {
                 val if TUI_CONFIG.list_config.selection_up == val => {
                     self.selected_index = if self.selected_index > 0 {
@@ -110,56 +110,8 @@ impl<'a> Component for ServicesComponent<'a> {
 
         Ok(())
     }
-}
 
-impl<'a> ServicesComponent<'a> {
-    fn get_list_len(&self) -> u16 {
-        self.service_names.len().try_into().unwrap()
-    }
-
-    fn get_list_item_text(&self, index: usize, list_item_string: String) -> Text {
-        let is_active_service_index = match self.active_service_index {
-            None => false,
-            Some(active_index) => usize::try_from(active_index)
-                .map(|active_index| active_index == index)
-                .unwrap_or(false),
-        };
-
-        if is_active_service_index {
-            Text::styled(
-                format!("**{}", list_item_string),
-                Style::default().fg(Color::Yellow),
-            )
-        } else {
-            Text::from(list_item_string)
-        }
-    }
-
-    fn set_active_service(&mut self, index: u16) -> anyhow::Result<()> {
-        self.active_service_index = Some(index);
-
-        self.action_tx.send(Action::ServiceAction {
-            action: ServiceAction::SelectService {
-                service: self.get_variant_for_selected_service(index),
-            },
-        })?;
-
-        Ok(())
-    }
-
-    fn get_variant_for_selected_service(&self, index: u16) -> AWSService {
-        let service_name = self.service_names[usize::from(index)];
-        match service_name {
-            val if TUI_CONFIG.services.cloud_watch_logs == val => AWSService::CloudWatchLogs,
-            val if TUI_CONFIG.services.dynamodb == val => AWSService::DynamoDB,
-            val if TUI_CONFIG.services.eks == val => AWSService::Eks,
-            val if TUI_CONFIG.services.s3_simple_storage_service == val => AWSService::S3,
-            val if TUI_CONFIG.services.service_catalog == val => AWSService::ServiceCatalog,
-            _ => AWSService::None,
-        }
-    }
-
-    pub fn render(&mut self, frame: &mut Frame<'_, CrosstermBackend<Stdout>>, area: Rect) {
+    fn render(&mut self, frame: &mut Frame<'_, CrosstermBackend<Stdout>>, area: Rect) {
         let list_items = self
             .service_names
             .into_iter()
@@ -196,5 +148,59 @@ impl<'a> ServicesComponent<'a> {
             area,
             &mut list_state,
         );
+    }
+}
+
+impl<'a> ServicesComponent<'a> {
+    fn get_list_len(&self) -> u16 {
+        self.service_names.len().try_into().unwrap()
+    }
+
+    fn get_list_item_text(&self, index: usize, list_item_string: String) -> Text {
+        let is_active_service_index = match self.active_service_index {
+            None => false,
+            Some(active_index) => usize::try_from(active_index)
+                .map(|active_index| active_index == index)
+                .unwrap_or(false),
+        };
+
+        if is_active_service_index {
+            Text::styled(
+                format!("**{}", list_item_string),
+                Style::default().fg(Color::Yellow),
+            )
+        } else {
+            Text::from(list_item_string)
+        }
+    }
+
+    fn set_active_service(&mut self, index: u16) -> anyhow::Result<()> {
+        if let Some(active_index) = self.active_service_index {
+            if active_index == index {
+                return Ok(());
+            }
+        }
+
+        self.active_service_index = Some(index);
+
+        self.action_tx.send(Action::Service {
+            action: ServiceAction::SelectService {
+                service: self.get_variant_for_selected_service(index),
+            },
+        })?;
+
+        Ok(())
+    }
+
+    fn get_variant_for_selected_service(&self, index: u16) -> AWSService {
+        let service_name = self.service_names[usize::from(index)];
+        match service_name {
+            val if TUI_CONFIG.services.cloud_watch_logs == val => AWSService::CloudWatchLogs,
+            val if TUI_CONFIG.services.dynamodb == val => AWSService::DynamoDB,
+            val if TUI_CONFIG.services.eks == val => AWSService::Eks,
+            val if TUI_CONFIG.services.s3_simple_storage_service == val => AWSService::S3,
+            val if TUI_CONFIG.services.service_catalog == val => AWSService::ServiceCatalog,
+            _ => AWSService::None,
+        }
     }
 }

@@ -1,4 +1,5 @@
 use tokio::sync::mpsc::UnboundedSender;
+use tracing::{event, Level};
 
 use crate::{
     state::appstate::{AWSService, AppState},
@@ -19,15 +20,15 @@ impl ServiceActionHandler {
             ServiceAction::SelectService {
                 service: aws_service,
             } => {
-                app_state.status_state.message = TUI_CONFIG.messages.pending_action.into();
-                app_state.status_state.err_message = "".into();
-                let _ = state_tx.send(app_state.clone());
-                let _result =
-                    ServiceActionHandler::handle_select_service(aws_service, app_state).await;
+                ServiceActionHandler::handle_select_service(aws_service, app_state);
+                app_state.status_state.action_pending = false;
             }
         }
     }
-    async fn handle_select_service(service: AWSService, app_state: &mut AppState) {
-        app_state.service_state.selected_service = service;
+    fn handle_select_service(service: AWSService, app_state: &mut AppState) {
+        if let Some(active_profile) = app_state.active_profile.as_mut() {
+            active_profile.selected_service = service;
+        }
+        event!(Level::DEBUG, "{:?}", app_state);
     }
 }

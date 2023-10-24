@@ -14,13 +14,17 @@ use crate::ui::component::status::StatusComponent;
 use crate::ui::component::Component;
 use crate::ui::config::TUI_CONFIG;
 
+use super::service::AWSServicePage;
+
 struct Props {
+    action_pending: bool,
     focus_component: ComponentType,
 }
 
 impl From<&AppState> for Props {
     fn from(app_state: &AppState) -> Self {
         Props {
+            action_pending: app_state.status_state.action_pending,
             focus_component: app_state.focus_component.clone(),
         }
     }
@@ -32,6 +36,7 @@ pub struct HomePage<'a> {
     profiles_component: ProfilesComponent,
     regions_component: RegionsComponent,
     services_component: ServicesComponent<'a>,
+    aws_service_page: AWSServicePage,
     status_component: StatusComponent,
 }
 
@@ -46,6 +51,7 @@ impl<'a> Component for HomePage<'a> {
             profiles_component: ProfilesComponent::new(app_state, action_tx.clone()),
             regions_component: RegionsComponent::new(app_state, action_tx.clone()),
             services_component: ServicesComponent::new(app_state, action_tx.clone()),
+            aws_service_page: AWSServicePage::new(app_state, action_tx.clone()),
             status_component: StatusComponent::new(app_state, action_tx.clone()),
         }
     }
@@ -70,6 +76,10 @@ impl<'a> Component for HomePage<'a> {
     }
 
     fn handle_key_event(&mut self, key: KeyEvent) -> anyhow::Result<()> {
+        if self.props.action_pending {
+            return Ok(());
+        }
+
         match key.code {
             KeyCode::Tab => {
                 let component_type = match self.props.focus_component {
@@ -97,15 +107,14 @@ impl<'a> Component for HomePage<'a> {
                 self.profiles_component.handle_key_event(key)?;
                 self.regions_component.handle_key_event(key)?;
                 self.services_component.handle_key_event(key)?;
+                self.aws_service_page.handle_key_event(key)?;
             }
         }
 
         Ok(())
     }
-}
 
-impl<'a> HomePage<'a> {
-    pub fn render(&mut self, frame: &mut Frame<'_, CrosstermBackend<Stdout>>, area: Rect) {
+    fn render(&mut self, frame: &mut Frame<'_, CrosstermBackend<Stdout>>, area: Rect) {
         frame.render_widget(Block::new().style(TUI_CONFIG.root), frame.size());
 
         let screen_layout = Layout::default()
@@ -138,7 +147,7 @@ impl<'a> HomePage<'a> {
         self.profiles_component.render(frame, list_layout[0]);
         self.regions_component.render(frame, list_layout[1]);
         self.services_component.render(frame, list_layout[2]);
-        // self.components.aws_service.render(frame, main_layout[1]);
+        self.aws_service_page.render(frame, main_layout[1]);
         self.status_component.render(frame, screen_layout[1]);
     }
 }

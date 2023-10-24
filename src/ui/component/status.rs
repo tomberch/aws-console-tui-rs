@@ -31,17 +31,15 @@ impl From<&AppState> for Props {
     }
 }
 pub struct StatusComponent {
-    action_tx: UnboundedSender<Action>,
     props: Props,
 }
 
 impl Component for StatusComponent {
-    fn new(app_state: &AppState, action_tx: UnboundedSender<Action>) -> Self
+    fn new(app_state: &AppState, _action_tx: UnboundedSender<Action>) -> Self
     where
         Self: Sized,
     {
         StatusComponent {
-            action_tx: action_tx.clone(),
             props: Props::from(app_state),
         }
     }
@@ -52,7 +50,6 @@ impl Component for StatusComponent {
     {
         StatusComponent {
             props: Props::from(app_state),
-            ..self
         }
     }
 
@@ -63,10 +60,8 @@ impl Component for StatusComponent {
     fn handle_key_event(&mut self, _key: KeyEvent) -> anyhow::Result<()> {
         Ok(())
     }
-}
 
-impl StatusComponent {
-    pub fn render(&mut self, frame: &mut Frame<'_, CrosstermBackend<Stdout>>, area: Rect) {
+    fn render(&mut self, frame: &mut Frame<'_, CrosstermBackend<Stdout>>, area: Rect) {
         let status_text = if self.props.err_message.is_empty() {
             Line::styled(&self.props.message, Style::default().fg(Color::DarkGray))
         } else {

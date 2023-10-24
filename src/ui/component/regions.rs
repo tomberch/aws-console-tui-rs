@@ -6,14 +6,14 @@ use ratatui::{
     prelude::{Alignment, CrosstermBackend, Rect},
     style::{Color, Style},
     text::Text,
-    widgets::{Block, BorderType, Borders, List, ListItem, ListState, Scrollbar, ScrollbarState},
+    widgets::{Block, BorderType, Borders, List, ListItem, ListState},
     Frame,
 };
 use tokio::sync::mpsc::UnboundedSender;
 
 use crate::{
     state::{
-        actions::actions::Action,
+        actions::actions::{Action, RegionAction},
         appstate::{AppState, ComponentType},
     },
     ui::config::TUI_CONFIG,
@@ -40,7 +40,6 @@ impl From<&AppState> for Props {
 pub struct RegionsComponent {
     action_tx: UnboundedSender<Action>,
     props: Props,
-
     selected_index: u16,
     active_region_index: Option<u16>,
 }
@@ -62,10 +61,27 @@ impl Component for RegionsComponent {
     where
         Self: Sized,
     {
-        RegionsComponent {
+        let mut component = RegionsComponent {
             props: Props::from(app_state),
             ..self
+        };
+
+        if let Some(active_profile) = &app_state.active_profile {
+            if let Some(selected_region) = &active_profile.selected_region {
+                if let Some(index) = component
+                    .props
+                    .region_names
+                    .iter()
+                    .position(|x| x == selected_region)
+                {
+                    let int_index: u16 = index.try_into().unwrap();
+                    component.selected_index = int_index;
+                    component.active_region_index = Some(int_index);
+                }
+            }
         }
+
+        component
     }
 
     fn component_type(&self) -> ComponentType {
@@ -83,7 +99,7 @@ impl Component for RegionsComponent {
                     })
                     .context("Could not send action for focus update")?;
             }
-        } else {
+        } else if self.get_list_len() > 0 {
             match key.code {
                 val if TUI_CONFIG.list_config.selection_up == val => {
                     self.selected_index = if self.selected_index > 0 {
@@ -104,43 +120,8 @@ impl Component for RegionsComponent {
 
         Ok(())
     }
-}
 
-impl RegionsComponent {
-    fn get_list_len(&self) -> u16 {
-        self.props.region_names.len().try_into().unwrap()
-    }
-
-    fn get_list_item_text(&self, index: usize, list_item_string: String) -> Text {
-        let is_active_profile_index = match self.active_region_index {
-            None => false,
-            Some(active_index) => usize::try_from(active_index)
-                .map(|active_index| active_index == index)
-                .unwrap_or(false),
-        };
-
-        if is_active_profile_index {
-            Text::styled(
-                format!("**{}", list_item_string),
-                Style::default().fg(Color::Yellow),
-            )
-        } else {
-            Text::from(list_item_string)
-        }
-    }
-
-    fn set_active_region(&mut self, index: u16) -> anyhow::Result<()> {
-        self.active_region_index = Some(index);
-        let _profile_name = &self.props.region_names[usize::from(index)];
-
-        Ok(())
-
-        // else {
-        //     let aws_config = create_aws_config(&self.app_state.aws_config).await;
-        // }
-    }
-
-    pub fn render(&mut self, frame: &mut Frame<'_, CrosstermBackend<Stdout>>, area: Rect) {
+    fn render(&mut self, frame: &mut Frame<'_, CrosstermBackend<Stdout>>, area: Rect) {
         let list_items = self
             .props
             .region_names
@@ -173,5 +154,47 @@ impl RegionsComponent {
             area,
             &mut list_state,
         );
+    }
+}
+
+impl RegionsComponent {
+    fn get_list_len(&self) -> u16 {
+        self.props.region_names.len().try_into().unwrap()
+    }
+
+    fn get_list_item_text(&self, index: usize, list_item_string: String) -> Text {
+        let is_active_profile_index = match self.active_region_index {
+            None => false,
+            Some(active_index) => usize::try_from(active_index)
+                .map(|active_index| active_index == index)
+                .unwrap_or(false),
+        };
+
+        if is_active_profile_index {
+            Text::styled(
+                format!("**{}", list_item_string),
+                Style::default().fg(Color::Yellow),
+            )
+        } else {
+            Text::from(list_item_string)
+        }
+    }
+
+    fn set_active_region(&mut self, index: u16) -> anyhow::Result<()> {
+        if let Some(active_index) = self.active_region_index {
+            if active_index == index {
+                return Ok(());
+            }
+        }
+        self.active_region_index = Some(index);
+        let region_name = &self.props.region_names[usize::from(index)];
+
+        self.action_tx.send(Action::Region {
+            action: RegionAction::SelectRegion {
+                region_name: (region_name.into()),
+            },
+        })?;
+
+        Ok(())
     }
 }
