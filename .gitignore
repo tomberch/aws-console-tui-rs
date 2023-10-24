@@ -4,3 +4,4 @@ tarpaulin-report.html
 
 /target
 /logs
+/volume
