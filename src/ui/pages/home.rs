@@ -67,6 +67,7 @@ impl<'a> Component for HomePage<'a> {
             regions_component: self.regions_component.move_with_state(app_state),
             services_component: self.services_component.move_with_state(app_state),
             status_component: self.status_component.move_with_state(app_state),
+            aws_service_page: self.aws_service_page.move_with_state(app_state),
             ..self
         }
     }

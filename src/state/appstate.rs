@@ -15,6 +15,7 @@ pub enum ComponentType {
     Services,
     Status,
     AWSService,
+    NoAWSService,
     CloudWatch,
 }
 
