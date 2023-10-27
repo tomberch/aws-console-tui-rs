@@ -23,14 +23,12 @@ use crate::{
 use super::Component;
 
 struct Props {
-    items: Vec<String>,
     has_focus: bool,
 }
 
 impl From<&AppState> for Props {
     fn from(app_state: &AppState) -> Self {
         Props {
-            items: app_state.profile_state.profile_names.clone(),
             has_focus: matches!(app_state.focus_component, ComponentType::Profiles),
         }
     }

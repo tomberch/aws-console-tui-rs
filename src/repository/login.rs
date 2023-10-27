@@ -2,9 +2,7 @@ use aws_config::{profile::profile_file::ProfileFileKind, SdkConfig};
 
 use tracing::{event, Level};
 
-use crate::config::config::AWSConfig;
-
-use super::profile::is_env_profile;
+use crate::{config::config::AWSConfig, state::appstate::ProfileSource};
 
 #[derive(Debug)]
 pub struct AwsCallerIdentity {
@@ -16,15 +14,21 @@ pub struct AwsCallerIdentity {
 pub struct LoginRepository;
 
 impl LoginRepository {
-    pub async fn create_aws_config(profile_name: &str, aws_config: &AWSConfig) -> SdkConfig {
-        let provider = LoginRepository::build_credentials_provider(profile_name, aws_config);
+    pub async fn create_aws_config(
+        profile_name: &str,
+        profile_source: &ProfileSource,
+        aws_config: &AWSConfig,
+    ) -> SdkConfig {
+        let sdk_config = match profile_source {
+            ProfileSource::Environment => aws_config::from_env().load().await,
+            ProfileSource::CredentialsFile => {
+                LoginRepository::build_credentials_config(profile_name, aws_config).await
+            }
+            ProfileSource::ConfigFile => {
+                LoginRepository::build_sso_config(profile_name, aws_config).await
+            }
+        };
 
-        let mut loader = aws_config::from_env().credentials_provider(provider);
-        if !aws_config.endpoint.is_empty() {
-            loader = loader.endpoint_url(aws_config.endpoint.as_str());
-        }
-
-        let sdk_config = loader.load().await;
         event!(
             Level::DEBUG,
             "AWS Config for profile {} = {:?}",
@@ -51,24 +55,32 @@ impl LoginRepository {
         Ok(identity)
     }
 
-    fn build_credentials_provider(
-        profile_name: &str,
-        aws_config: &AWSConfig,
-    ) -> aws_config::profile::ProfileFileCredentialsProvider {
+    async fn build_credentials_config(profile_name: &str, aws_config: &AWSConfig) -> SdkConfig {
+        let mut path = aws_config.file_path.clone();
+        path.push("credentials");
+
         let profile_files = aws_config::profile::profile_file::ProfileFiles::builder()
-            .with_file(
-                ProfileFileKind::Credentials,
-                aws_config.credentials_path.as_os_str(),
-            )
+            .with_file(ProfileFileKind::Credentials, path.as_os_str())
             .build();
 
-        let mut provider = aws_config::profile::ProfileFileCredentialsProvider::builder()
-            .profile_files(profile_files);
+        let provider = aws_config::profile::ProfileFileCredentialsProvider::builder()
+            .profile_files(profile_files)
+            .profile_name(profile_name);
 
-        if !is_env_profile(profile_name) {
-            provider = provider.profile_name(profile_name);
+        let mut loader = aws_config::from_env().credentials_provider(provider.build());
+        if !aws_config.endpoint.is_empty() {
+            loader = loader.endpoint_url(aws_config.endpoint.as_str());
         }
 
-        provider.build()
+        loader.load().await
+    }
+
+    async fn build_sso_config(profile_name: &str, aws_config: &AWSConfig) -> SdkConfig {
+        let mut loader = aws_config::from_env().profile_name(profile_name);
+        if !aws_config.endpoint.is_empty() {
+            loader = loader.endpoint_url(aws_config.endpoint.as_str());
+        }
+
+        loader.load().await
     }
 }

@@ -2,7 +2,7 @@ use tokio::sync::mpsc::UnboundedSender;
 
 use crate::{
     repository::{ec2::EC2Repository, login::LoginRepository},
-    state::appstate::{AWSService, AppState, Profile},
+    state::appstate::{AWSService, AppState, Profile, ProfileSource},
     ui::config::TUI_CONFIG,
 };
 
@@ -17,9 +17,7 @@ impl ProfileActionHandler {
         app_state: &mut AppState,
     ) {
         match action {
-            ProfileAction::SelectProfile {
-                profile_name: profile,
-            } => {
+            ProfileAction::SelectProfile { profile: profile } => {
                 app_state.status_state.action_pending = true;
                 app_state.status_state.message = TUI_CONFIG.messages.pending_action.into();
                 app_state.status_state.err_message = "".into();
@@ -29,7 +27,10 @@ impl ProfileActionHandler {
             }
         }
     }
-    async fn handle_select_profile(profile_name: &str, app_state: &mut AppState) {
+    async fn handle_select_profile(
+        (profile_name, profile_source): &(String, ProfileSource),
+        app_state: &mut AppState,
+    ) {
         if let Some(active_profile) = app_state.active_profile.take() {
             if active_profile.err_message.is_empty() {
                 app_state
@@ -42,13 +43,18 @@ impl ProfileActionHandler {
         let profile = match app_state.profile_state.profiles.remove(profile_name) {
             Some(profile) => profile,
             None => {
-                let config =
-                    LoginRepository::create_aws_config(profile_name, &app_state.aws_config).await;
+                let config = LoginRepository::create_aws_config(
+                    profile_name,
+                    profile_source,
+                    &app_state.aws_config,
+                )
+                .await;
                 let result = LoginRepository::fetch_caller_identity(&config).await;
                 match result {
                     Ok(identity) => {
                         let mut profile = Profile {
                             name: profile_name.into(),
+                            source: profile_source.to_owned(),
                             selected_region: config.region().map(|region| region.as_ref().into()),
                             sdk_config: config,
                             account: identity.account,
@@ -68,6 +74,7 @@ impl ProfileActionHandler {
                             Err(err) => {
                                 profile = Profile {
                                     name: profile_name.into(),
+                                    source: profile_source.to_owned(),
                                     sdk_config: profile.sdk_config,
                                     account: "".into(),
                                     user: "".into(),
@@ -84,6 +91,7 @@ impl ProfileActionHandler {
                     }
                     Err(err) => Profile {
                         name: profile_name.into(),
+                        source: profile_source.to_owned(),
                         sdk_config: config,
                         account: "".into(),
                         user: "".into(),

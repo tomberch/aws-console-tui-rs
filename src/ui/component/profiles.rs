@@ -1,4 +1,4 @@
-use std::{cmp::min, io::Stdout};
+use std::{cmp::min, collections::HashMap, io::Stdout};
 
 use anyhow::Context;
 use crossterm::event::KeyEvent;
@@ -15,7 +15,7 @@ use tokio::sync::mpsc::UnboundedSender;
 use crate::{
     state::{
         actions::actions::{Action, ProfileAction},
-        appstate::{AppState, ComponentType},
+        appstate::{AppState, ComponentType, ProfileSource},
     },
     ui::config::TUI_CONFIG,
 };
@@ -23,7 +23,7 @@ use crate::{
 use super::Component;
 
 struct Props {
-    items: Vec<String>,
+    items: HashMap<String, ProfileSource>,
     has_focus: bool,
 }
 
@@ -106,7 +106,7 @@ impl Component for ProfilesComponent {
         let list_items = self
             .props
             .items
-            .iter()
+            .keys()
             .enumerate()
             .map(|(index, element)| ListItem::new(self.get_list_item_text(index, element.into())))
             .collect::<Vec<ListItem>>();
@@ -170,11 +170,15 @@ impl ProfilesComponent {
 
         self.active_profile_index = Some(index);
 
-        let profile_name = &self.props.items[usize::from(index)];
+        let profile_name =
+            &self.props.items.keys().cloned().collect::<Vec<String>>()[usize::from(index)];
 
         self.action_tx.send(Action::Profile {
             action: ProfileAction::SelectProfile {
-                profile_name: (profile_name.into()),
+                profile: (
+                    profile_name.clone(),
+                    self.props.items.get(profile_name).unwrap().to_owned(),
+                ),
             },
         })?;
 

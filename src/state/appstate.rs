@@ -20,8 +20,16 @@ pub enum ComponentType {
 }
 
 #[derive(Clone, Debug)]
+pub enum ProfileSource {
+    Environment,
+    CredentialsFile,
+    ConfigFile,
+}
+
+#[derive(Clone, Debug)]
 pub struct Profile {
     pub name: String,
+    pub source: ProfileSource,
     pub sdk_config: SdkConfig,
     pub account: String,
     pub user: String,
@@ -34,7 +42,7 @@ pub struct Profile {
 
 #[derive(Clone, Debug)]
 pub struct ProfilesState {
-    pub profile_names: Vec<String>,
+    pub profile_names: HashMap<String, ProfileSource>,
     pub profiles: HashMap<String, Profile>,
 }
 

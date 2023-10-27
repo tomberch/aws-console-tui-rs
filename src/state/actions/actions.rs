@@ -1,8 +1,8 @@
-use crate::state::appstate::{AWSService, ComponentType};
+use crate::state::appstate::{AWSService, ComponentType, ProfileSource};
 
 #[derive(Debug, Clone)]
 pub enum ProfileAction {
-    SelectProfile { profile_name: String },
+    SelectProfile { profile: (String, ProfileSource) },
 }
 
 #[derive(Debug, Clone)]

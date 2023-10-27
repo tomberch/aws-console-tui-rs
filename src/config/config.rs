@@ -10,12 +10,12 @@ use figment::{
 
 const CONFIG_FILE_PATH: &str = "config_file_path";
 const CONFIG_FILE_NAME: &str = "config.toml";
-const AWS_CREDENTIALS_FILE: &str = ".aws/credentials";
+const AWS_CREDENTIALS_FILE: &str = ".aws";
 
 #[derive(Clone, Default, Debug, Deserialize, Serialize)]
 #[serde(default, rename_all = "camelCase")]
 pub struct AWSConfig {
-    pub credentials_path: PathBuf,
+    pub file_path: PathBuf,
     pub profiles: Vec<String>,
     pub regions: Vec<String>,
     pub services: Vec<String>,
@@ -63,7 +63,7 @@ pub fn create_config(arguments: &HashMap<String, String>) -> Result<AppConfig> {
 fn create_default_values() -> AppConfig {
     AppConfig {
         aws: AWSConfig {
-            credentials_path: get_default_aws_credential_path(),
+            file_path: get_default_aws_credential_path(),
             ..Default::default()
         },
         logging: LoggingConfig {
@@ -109,10 +109,7 @@ mod tests {
 
         let app_config = create_config(&commands).unwrap();
 
-        assert_eq!(
-            app_config.aws.credentials_path,
-            get_default_aws_credential_path()
-        );
+        assert_eq!(app_config.aws.file_path, get_default_aws_credential_path());
         assert_eq!(app_config.aws.profiles, Vec::<String>::new());
         assert_eq!(app_config.aws.regions, Vec::<String>::new());
         assert_eq!(app_config.aws.services, Vec::<String>::new());
@@ -130,10 +127,7 @@ mod tests {
 
         let app_config = create_config(&commands).unwrap();
 
-        assert_eq!(
-            app_config.aws.credentials_path,
-            PathBuf::from(credentials_path)
-        );
+        assert_eq!(app_config.aws.file_path, PathBuf::from(credentials_path));
     }
 
     #[test]
@@ -204,10 +198,7 @@ mod tests {
 
         let app_config = create_config(&commands).unwrap();
 
-        assert_eq!(
-            app_config.aws.credentials_path.to_str().unwrap(),
-            "/home/test"
-        );
+        assert_eq!(app_config.aws.file_path.to_str().unwrap(), "/home/test");
         assert_eq!(
             app_config.aws.profiles.as_slice(),
             ["dev", "prod", "staging"]
