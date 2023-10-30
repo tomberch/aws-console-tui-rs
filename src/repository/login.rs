@@ -1,3 +1,4 @@
+use anyhow::anyhow;
 use aws_config::{profile::profile_file::ProfileFileKind, SdkConfig};
 
 use tracing::{event, Level};
@@ -20,7 +21,9 @@ impl LoginRepository {
         aws_config: &AWSConfig,
     ) -> SdkConfig {
         let sdk_config = match profile_source {
-            ProfileSource::Environment => aws_config::from_env().load().await,
+            ProfileSource::Environment => {
+                LoginRepository::build_env_config(&aws_config.endpoint).await
+            }
             ProfileSource::CredentialsFile => {
                 LoginRepository::build_credentials_config(profile_name, aws_config).await
             }
@@ -41,18 +44,28 @@ impl LoginRepository {
 
     pub async fn fetch_caller_identity(config: &SdkConfig) -> anyhow::Result<AwsCallerIdentity> {
         let client = aws_sdk_sts::Client::new(config);
-        let r = client.get_caller_identity().send().await;
-        let response = r?;
+        match client.get_caller_identity().send().await {
+            Ok(response) => {
+                let identity = AwsCallerIdentity {
+                    account: response.account().unwrap_or_default().to_string(),
+                    arn: response.arn().unwrap_or_default().to_string(),
+                    user_id: response.user_id().unwrap_or_default().to_string(),
+                };
+                event!(Level::DEBUG, "Caller Identity = {:?}", identity);
+                Ok(identity)
+            }
+            Err(err) => {
+                event!(Level::WARN, "Error Caller Identity = {:?}", err);
+                Err(anyhow!(err))
+            }
+        }
+    }
 
-        let identity = AwsCallerIdentity {
-            account: response.account().unwrap_or_default().to_string(),
-            arn: response.arn().unwrap_or_default().to_string(),
-            user_id: response.user_id().unwrap_or_default().to_string(),
-        };
-
-        event!(Level::DEBUG, "Caller Identity = {:?}", identity);
-
-        Ok(identity)
+    async fn build_env_config(endpoint_url: &str) -> SdkConfig {
+        aws_config::from_env()
+            .endpoint_url(endpoint_url)
+            .load()
+            .await
     }
 
     async fn build_credentials_config(profile_name: &str, aws_config: &AWSConfig) -> SdkConfig {

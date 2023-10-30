@@ -8,7 +8,7 @@ use tokio::sync::mpsc::UnboundedSender;
 use crate::state::actions::actions::Action;
 use crate::state::appstate::{AWSService, AppState, ComponentType};
 
-use crate::ui::component::cloud_watch::CloudWatchComponent;
+use crate::ui::component::cloud_watch_logs::CloudWatchLogsComponent;
 use crate::ui::component::Component;
 use crate::ui::config::TUI_CONFIG;
 
@@ -32,7 +32,7 @@ impl From<&AppState> for Props {
 
 pub struct AWSServicePage {
     pub action_tx: UnboundedSender<Action>,
-    cloud_watch_component: CloudWatchComponent,
+    cloud_watch_component: CloudWatchLogsComponent,
     props: Props,
 }
 
@@ -43,7 +43,7 @@ impl Component for AWSServicePage {
     {
         AWSServicePage {
             action_tx: action_tx.clone(),
-            cloud_watch_component: CloudWatchComponent::new(app_state, action_tx.clone()),
+            cloud_watch_component: CloudWatchLogsComponent::new(app_state, action_tx.clone()),
             props: Props::from(app_state),
         }
     }

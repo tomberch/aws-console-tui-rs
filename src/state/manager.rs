@@ -4,6 +4,7 @@ use tokio_util::sync::CancellationToken;
 use crate::{
     config::config::AppConfig,
     state::actions::{
+        cloud_watch_logs_action_handler::CloudWatchLogsActionHandler,
         profile_action_handler::ProfileActionHandler, region_action_handler::RegionActionHandler,
         service_action_handler::ServiceActionHandler,
     },
@@ -49,7 +50,8 @@ impl StateManager {
                         Action::Profile{ action }=>{ProfileActionHandler::handle(self.state_tx.clone(), action, &mut app_state).await},
                         Action::Region{action} => {RegionActionHandler::handle(action, &mut app_state)},
                         Action::Service{ action }=>{ServiceActionHandler::handle(self.state_tx.clone(), action, &mut app_state).await},
-                }
+                        Action::CloudWatchLogs {action} =>{CloudWatchLogsActionHandler::handle(self.state_tx.clone(), action, &mut app_state).await},
+                    }
             }
 
             self.state_tx.send(app_state.clone())?;

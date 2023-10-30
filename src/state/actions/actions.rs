@@ -16,9 +16,15 @@ pub enum ServiceAction {
 }
 
 #[derive(Debug, Clone)]
+pub enum CloudWatchLogsAction {
+    GetLogGroups { token: Option<String> },
+}
+
+#[derive(Debug, Clone)]
 pub enum Action {
     SetFocus { component_type: ComponentType },
     Profile { action: ProfileAction },
     Region { action: RegionAction },
     Service { action: ServiceAction },
+    CloudWatchLogs { action: CloudWatchLogsAction },
 }

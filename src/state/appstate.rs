@@ -7,6 +7,8 @@ use crate::{
     repository::profile::get_available_profiles,
 };
 
+use super::cloud_watch_logs_state::CloudWatchState;
+
 #[derive(Clone, Debug)]
 pub enum ComponentType {
     Home,
@@ -61,19 +63,6 @@ pub enum AWSService {
     ServiceCatalog,
 }
 
-pub struct CloudWatch {
-    log_groups: Vec<CloudWatchLogGroup>,
-    selected_log_group: Option<CloudWatchLogGroup>,
-}
-
-#[derive(Clone, Debug, Default)]
-pub struct CloudWatchLogGroup {
-    name: String,
-    date_created: i64,
-    retention_days: i16,
-    stored_bytes: i64,
-}
-
 #[derive(Clone, Debug, Default)]
 pub struct StatusState {
     pub action_pending: bool,
@@ -90,6 +79,7 @@ pub struct AppState {
     pub profile_state: ProfilesState,
     pub region_state: RegionsState,
     pub status_state: StatusState,
+    pub cloud_watch_state: CloudWatchState,
 }
 
 impl AppState {
@@ -111,6 +101,7 @@ impl AppState {
                 err_message: "".into(),
                 err_message_backtrace: "".into(),
             },
+            cloud_watch_state: CloudWatchState::default(),
         }
     }
 }

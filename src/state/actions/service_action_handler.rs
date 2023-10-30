@@ -2,7 +2,7 @@ use tokio::sync::mpsc::UnboundedSender;
 use tracing::{event, Level};
 
 use crate::{
-    state::appstate::{AWSService, AppState},
+    state::appstate::{AWSService, AppState, ComponentType},
     ui::config::TUI_CONFIG,
 };
 
@@ -28,6 +28,7 @@ impl ServiceActionHandler {
     fn handle_select_service(service: AWSService, app_state: &mut AppState) {
         if let Some(active_profile) = app_state.active_profile.as_mut() {
             active_profile.selected_service = service;
+            app_state.focus_component = ComponentType::AWSService;
         }
         event!(Level::DEBUG, "{:?}", app_state);
     }

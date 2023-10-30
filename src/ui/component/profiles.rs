@@ -108,7 +108,9 @@ impl Component for ProfilesComponent {
             .items
             .keys()
             .enumerate()
-            .map(|(index, element)| ListItem::new(self.get_list_item_text(index, element.into())))
+            .map(|(index, element)| {
+                ListItem::new(self.create_list_item_text(index, element.into()))
+            })
             .collect::<Vec<ListItem>>();
 
         let mut list_state = ListState::default().with_selected(Some(self.selected_index.into()));
@@ -143,7 +145,7 @@ impl ProfilesComponent {
         self.props.items.len().try_into().unwrap()
     }
 
-    fn get_list_item_text(&self, index: usize, list_item_string: String) -> Text {
+    fn create_list_item_text(&self, index: usize, list_item_string: String) -> Text {
         let is_active_profile_index = match self.active_profile_index {
             None => false,
             Some(active_index) => usize::try_from(active_index)

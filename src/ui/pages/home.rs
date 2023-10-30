@@ -86,7 +86,8 @@ impl<'a> Component for HomePage<'a> {
                 let component_type = match self.props.focus_component {
                     ComponentType::Profiles => ComponentType::Regions,
                     ComponentType::Regions => ComponentType::Services,
-                    ComponentType::Services => ComponentType::Profiles,
+                    ComponentType::Services => ComponentType::AWSService,
+                    ComponentType::AWSService => ComponentType::Profiles,
                     _ => return Ok(()),
                 };
                 self.action_tx
@@ -95,9 +96,10 @@ impl<'a> Component for HomePage<'a> {
             }
             KeyCode::BackTab => {
                 let component_type = match self.props.focus_component {
-                    ComponentType::Profiles => ComponentType::Services,
+                    ComponentType::Profiles => ComponentType::AWSService,
                     ComponentType::Regions => ComponentType::Profiles,
                     ComponentType::Services => ComponentType::Regions,
+                    ComponentType::AWSService => ComponentType::Services,
                     _ => return Ok(()),
                 };
                 self.action_tx

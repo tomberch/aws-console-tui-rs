@@ -51,6 +51,7 @@ pub struct Services<'a> {
 pub struct Messages<'a> {
     pub pending_action: &'a str,
     pub error_caller_identity: &'a str,
+    error_describe_cloud_watch_log_groups: &'a str,
 }
 
 pub const TUI_CONFIG: TuiConfig = TuiConfig {
@@ -108,6 +109,8 @@ pub const TUI_CONFIG: TuiConfig = TuiConfig {
         pending_action: "Pending action. Please wait ...",
         error_caller_identity:
             "Error: Cloud not fetch caller identity. Press <CTRL-m> for more information",
+        error_describe_cloud_watch_log_groups:
+            "Error: CloudWatch Log Groups could not be fetched. Press <CTRL-m> for more information",
     },
 };
 

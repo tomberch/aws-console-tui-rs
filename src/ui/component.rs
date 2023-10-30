@@ -12,7 +12,7 @@ use crate::state::{
     appstate::{AppState, ComponentType},
 };
 
-pub mod cloud_watch;
+pub mod cloud_watch_logs;
 pub mod profiles;
 pub mod regions;
 pub mod services;
