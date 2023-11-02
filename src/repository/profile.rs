@@ -24,7 +24,7 @@ pub fn get_available_profiles(aws_config: &AWSConfig) -> Result<HashMap<String, 
 
     let full_credentials_path = join_full_path(aws_config.file_path.clone(), AWS_CREDENTIALS_FILE);
     if let Ok(credentials) = get_entries(full_credentials_path.as_os_str()) {
-        for profile in extract_profiles_from_file(&credentials, r"(?m)\[(\w*)\]$")?.into_iter() {
+        for profile in extract_profiles_from_file(&credentials, r"(?m)\[(.*)\]$")?.into_iter() {
             profiles.insert(profile, ProfileSource::CredentialsFile);
         }
     };
@@ -33,7 +33,7 @@ pub fn get_available_profiles(aws_config: &AWSConfig) -> Result<HashMap<String, 
     let _z = full_config_path.as_os_str();
     if let Ok(credentials) = get_entries(full_config_path.as_os_str()) {
         for profile in
-            extract_profiles_from_file(&credentials, r"(?m)\[profile (\w*)\]\s*")?.into_iter()
+            extract_profiles_from_file(&credentials, r"(?m)\[profile (.*)\]\s*")?.into_iter()
         {
             profiles.insert(profile, ProfileSource::ConfigFile);
         }
@@ -145,7 +145,7 @@ mod tests {
 lorem ipsum
 lorem ipsum
 
-[dev]
+[dev-test]
 lorem ipsum
 lorem ipsum",
             )
@@ -160,7 +160,7 @@ lorem ipsum",
 
         assert_eq!(2, profiles.len());
         assert!(profiles.contains_key(&"default".to_string()));
-        assert!(profiles.contains_key(&"dev".to_string()));
+        assert!(profiles.contains_key(&"dev-test".to_string()));
     }
 
     #[test]

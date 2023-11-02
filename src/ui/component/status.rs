@@ -1,8 +1,6 @@
-use std::io::Stdout;
-
 use crossterm::event::KeyEvent;
 use ratatui::{
-    prelude::{CrosstermBackend, Rect},
+    prelude::Rect,
     style::{Color, Style},
     text::Line,
     widgets::{Block, BorderType, Borders, Paragraph},

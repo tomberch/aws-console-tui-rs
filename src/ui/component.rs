@@ -1,10 +1,5 @@
-use std::io::Stdout;
-
 use crossterm::event::KeyEvent;
-use ratatui::{
-    prelude::{CrosstermBackend, Rect},
-    Frame,
-};
+use ratatui::{prelude::Rect, Frame};
 use tokio::sync::mpsc::UnboundedSender;
 
 use crate::state::{

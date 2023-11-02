@@ -1,10 +1,7 @@
 use tokio::sync::mpsc::UnboundedSender;
 use tracing::{event, Level};
 
-use crate::{
-    state::appstate::{AWSService, AppState, ComponentType},
-    ui::config::TUI_CONFIG,
-};
+use crate::state::appstate::{AWSService, AppState, ComponentType};
 
 use super::actions::ServiceAction;
 

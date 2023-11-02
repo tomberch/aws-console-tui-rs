@@ -1,14 +1,10 @@
-use std::{cmp::min, io::Stdout};
-
-use anyhow::Context;
-use chrono::{DateTime, SecondsFormat, Utc};
+use chrono::{DateTime, SecondsFormat};
 use crossterm::event::{KeyCode, KeyEvent};
 
 use ratatui::{
-    prelude::{Alignment, CrosstermBackend, Rect},
-    style::{Color, Style},
-    text::{Line, Text},
-    widgets::{Block, BorderType, Borders, List, ListItem, ListState, Paragraph},
+    prelude::{Alignment, Rect},
+    text::Text,
+    widgets::{Block, BorderType, Borders, List, ListItem, Paragraph},
     Frame,
 };
 use tokio::sync::mpsc::UnboundedSender;

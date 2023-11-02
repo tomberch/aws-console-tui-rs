@@ -1,7 +1,5 @@
 mod utils;
 
-use std::process::Command;
-
 use crate::utils::Utils;
 
 #[test]

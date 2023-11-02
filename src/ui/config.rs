@@ -51,7 +51,7 @@ pub struct Services<'a> {
 pub struct Messages<'a> {
     pub pending_action: &'a str,
     pub error_caller_identity: &'a str,
-    error_describe_cloud_watch_log_groups: &'a str,
+    pub error_describe_cloud_watch_log_groups: &'a str,
 }
 
 pub const TUI_CONFIG: TuiConfig = TuiConfig {

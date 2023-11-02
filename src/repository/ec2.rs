@@ -13,15 +13,11 @@ impl EC2Repository {
         let client = &EC2Repository::create_client(aws_config, config);
         let regions_option = client.describe_regions().send().await?;
 
-        let result: Vec<String> = match regions_option.regions() {
-            Some(regions) => regions
-                .iter()
-                .map(|rg| rg.region_name().unwrap().to_string())
-                .collect::<Vec<String>>(),
-            None => {
-                vec![]
-            }
-        };
+        let result: Vec<String> = regions_option
+            .regions()
+            .iter()
+            .map(|rg| rg.region_name().unwrap().to_string())
+            .collect::<Vec<String>>();
 
         Ok(result)
     }

@@ -23,7 +23,6 @@ impl CloudWatchLogsRepository {
             Ok(response) => {
                 let log_groups = response
                     .log_groups()
-                    .unwrap_or_default()
                     .iter()
                     .map(|group| CloudWatchLogGroup {
                         arn: group.arn().unwrap().into(),

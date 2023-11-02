@@ -1,5 +1,3 @@
-use std::io::Stdout;
-
 use anyhow::Context;
 use crossterm::event::KeyEvent;
 use ratatui::{prelude::*, widgets::*};

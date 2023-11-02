@@ -1,10 +1,10 @@
-use std::{cmp::min, collections::HashMap, io::Stdout};
+use std::{cmp::min, collections::HashMap};
 
 use anyhow::Context;
 use crossterm::event::KeyEvent;
 
 use ratatui::{
-    prelude::{Alignment, CrosstermBackend, Rect},
+    prelude::{Alignment, Rect},
     style::{Color, Style},
     text::Text,
     widgets::{Block, BorderType, Borders, List, ListItem, ListState},
