@@ -43,7 +43,7 @@ impl From<&AppState> for Props {
 pub struct CloudWatchLogsComponent {
     action_tx: UnboundedSender<Action>,
     first_time_render: bool,
-    tree_state: TreeState,
+    tree_state: TreeState<String>,
     props: Props,
 }
 
@@ -82,7 +82,7 @@ impl Component for CloudWatchLogsComponent {
         Ok(())
     }
 
-    fn render(&mut self, frame: &mut Frame<'_, CrosstermBackend<Stdout>>, area: Rect) {
+    fn render(&mut self, frame: &mut Frame, area: Rect) {
         if self.first_time_render {
             self.update();
             self.first_time_render = false;
@@ -165,9 +165,9 @@ impl CloudWatchLogsComponent {
             .border_type(BorderType::Rounded)
     }
 
-    fn first(&mut self) {
-        self.tree_state.select_first();
-    }
+    // fn first(&mut self) {
+    //     self.tree_state.select_first();
+    // }
 
     // fn last(&mut self) {
     //     self.tree_state.select_last(&self.items);

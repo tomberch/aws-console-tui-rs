@@ -61,7 +61,7 @@ impl Component for StatusComponent {
         Ok(())
     }
 
-    fn render(&mut self, frame: &mut Frame<'_, CrosstermBackend<Stdout>>, area: Rect) {
+    fn render(&mut self, frame: &mut Frame, area: Rect) {
         let status_text = if self.props.err_message.is_empty() {
             Line::styled(&self.props.message, Style::default().fg(Color::DarkGray))
         } else {

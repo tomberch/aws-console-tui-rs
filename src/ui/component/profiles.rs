@@ -102,7 +102,7 @@ impl Component for ProfilesComponent {
         Ok(())
     }
 
-    fn render(&mut self, frame: &mut Frame<'_, CrosstermBackend<Stdout>>, area: Rect) {
+    fn render(&mut self, frame: &mut Frame, area: Rect) {
         let list_items = self
             .props
             .items

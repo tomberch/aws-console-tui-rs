@@ -85,7 +85,7 @@ impl Component for AWSServicePage {
         Ok(())
     }
 
-    fn render(&mut self, frame: &mut Frame<'_, CrosstermBackend<Stdout>>, area: Rect) {
+    fn render(&mut self, frame: &mut Frame, area: Rect) {
         match self.props.active_aws_service {
             AWSService::CloudWatchLogs => self.cloud_watch_component.render(frame, area),
             _ => {

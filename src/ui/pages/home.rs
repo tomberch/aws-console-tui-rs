@@ -117,7 +117,7 @@ impl<'a> Component for HomePage<'a> {
         Ok(())
     }
 
-    fn render(&mut self, frame: &mut Frame<'_, CrosstermBackend<Stdout>>, area: Rect) {
+    fn render(&mut self, frame: &mut Frame, area: Rect) {
         frame.render_widget(Block::new().style(TUI_CONFIG.root), frame.size());
 
         let screen_layout = Layout::default()

@@ -111,7 +111,7 @@ impl<'a> Component for ServicesComponent<'a> {
         Ok(())
     }
 
-    fn render(&mut self, frame: &mut Frame<'_, CrosstermBackend<Stdout>>, area: Rect) {
+    fn render(&mut self, frame: &mut Frame, area: Rect) {
         let list_items = self
             .service_names
             .into_iter()

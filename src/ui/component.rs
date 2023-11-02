@@ -31,5 +31,5 @@ pub trait Component {
 
     fn handle_key_event(&mut self, key: KeyEvent) -> anyhow::Result<()>;
 
-    fn render(&mut self, frame: &mut Frame<'_, CrosstermBackend<Stdout>>, area: Rect);
+    fn render(&mut self, frame: &mut Frame, area: Rect);
 }
