@@ -41,22 +41,21 @@ impl StateManager {
 
         loop {
             tokio::select! {
-                        _ = cancellation_token.cancelled() => {
-                            break;
-                          }
+                _ = cancellation_token.cancelled() => {
+                    break;
 
-                    Some(action) = action_rx.recv() => match action {
-                        Action::SetFocus { component_type } => app_state.focus_component = component_type,
-                        Action::Profile{ action }=>{ProfileActionHandler::handle(self.state_tx.clone(), action, &mut app_state).await},
-                        Action::Region{action} => {RegionActionHandler::handle(action, &mut app_state)},
-                        Action::Service{ action }=>{ServiceActionHandler::handle(self.state_tx.clone(), action, &mut app_state).await},
-                        Action::CloudWatchLogs {action} =>{CloudWatchLogsActionHandler::handle(self.state_tx.clone(), action, &mut app_state).await},
-                    }
-            }
+                     }
+
+            Some(action) = action_rx.recv() => match action {
+                Action::SetFocus { component_type } => app_state.focus_component = component_type,
+                Action::Profile{ action }=>{ProfileActionHandler::handle(action, &mut app_state).await},
+                Action::Region{action} => {RegionActionHandler::handle(action, &mut app_state)},
+                Action::Service{ action }=>{ServiceActionHandler::handle( action, &mut app_state).await},
+                Action::CloudWatchLogs {action} =>{CloudWatchLogsActionHandler::handle(action, &mut app_state).await},
+            }}
 
             self.state_tx.send(app_state.clone())?;
         }
-
         Ok(())
     }
 }

@@ -31,11 +31,8 @@ impl UIManager {
         let mut ticker = tokio::time::interval(Duration::from_millis(TUI_CONFIG.tick_rate_in_ms));
         let mut event_reader = EventStream::new();
 
-        let mut home_page = {
-            let app_state = state_rx.recv().await.unwrap();
-
-            HomePage::new(&app_state, self.action_tx.clone())
-        };
+        let mut app_state = state_rx.recv().await.unwrap();
+        let mut home_page = { HomePage::new(self.action_tx.clone()) };
 
         loop {
             let crossterm_event = event_reader.next().fuse();
@@ -58,7 +55,7 @@ impl UIManager {
                                         cancellation_token.cancel();
                                     } else {
 
-                                    home_page.handle_key_event(key)?;}
+                                    home_page.handle_key_event(key, &app_state)?;}
                                 }
                             },
                             Event::Mouse(_mouse) => {},
@@ -79,14 +76,13 @@ impl UIManager {
                     },
                     None => todo!(),
                 },
-                Some(state) = state_rx.recv() => {
-                    home_page = home_page.move_with_state(&state);
-                },
+                Some(state) = state_rx.recv() =>
+                    app_state = state,
 
             }
 
             terminal
-                .draw(|frame| home_page.render(frame, frame.size()))
+                .draw(|frame| home_page.render(frame, frame.size(), &app_state))
                 .context("could not render to the terminal")?;
         }
 

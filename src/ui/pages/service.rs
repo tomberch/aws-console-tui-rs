@@ -10,50 +10,19 @@ use crate::ui::component::cloud_watch_logs::CloudWatchLogsComponent;
 use crate::ui::component::Component;
 use crate::ui::config::TUI_CONFIG;
 
-struct Props {
-    has_focus: bool,
-    active_aws_service: AWSService,
-}
-
-impl From<&AppState> for Props {
-    fn from(app_state: &AppState) -> Self {
-        Props {
-            has_focus: matches!(app_state.focus_component, ComponentType::AWSService),
-            active_aws_service: if let Some(active_profile) = &app_state.active_profile {
-                active_profile.selected_service.clone()
-            } else {
-                AWSService::None
-            },
-        }
-    }
-}
-
 pub struct AWSServicePage {
     pub action_tx: UnboundedSender<Action>,
     cloud_watch_component: CloudWatchLogsComponent,
-    props: Props,
 }
 
 impl Component for AWSServicePage {
-    fn new(app_state: &AppState, action_tx: UnboundedSender<Action>) -> Self
+    fn new(action_tx: UnboundedSender<Action>) -> Self
     where
         Self: Sized,
     {
         AWSServicePage {
             action_tx: action_tx.clone(),
-            cloud_watch_component: CloudWatchLogsComponent::new(app_state, action_tx.clone()),
-            props: Props::from(app_state),
-        }
-    }
-
-    fn move_with_state(self, app_state: &AppState) -> Self
-    where
-        Self: Sized,
-    {
-        AWSServicePage {
-            props: Props::from(app_state),
-            cloud_watch_component: self.cloud_watch_component.move_with_state(app_state),
-            ..self
+            cloud_watch_component: CloudWatchLogsComponent::new(action_tx.clone()),
         }
     }
 
@@ -61,8 +30,8 @@ impl Component for AWSServicePage {
         ComponentType::AWSService
     }
 
-    fn handle_key_event(&mut self, key: KeyEvent) -> anyhow::Result<()> {
-        if !self.props.has_focus {
+    fn handle_key_event(&mut self, key: KeyEvent, app_state: &AppState) -> anyhow::Result<()> {
+        if !self.has_focus(app_state) {
             if TUI_CONFIG.key_config.focus_profiles.key_code == key.code
                 && TUI_CONFIG.key_config.focus_profiles.key_modifier == key.modifiers
             {
@@ -73,8 +42,10 @@ impl Component for AWSServicePage {
                     .context("Could not send action for focus update")?;
             }
         } else {
-            match self.props.active_aws_service {
-                AWSService::CloudWatchLogs => self.cloud_watch_component.handle_key_event(key)?,
+            match self.active_aws_service(app_state) {
+                AWSService::CloudWatchLogs => self
+                    .cloud_watch_component
+                    .handle_key_event(key, app_state)?,
                 AWSService::DynamoDB => {}
                 _ => {}
             };
@@ -83,20 +54,34 @@ impl Component for AWSServicePage {
         Ok(())
     }
 
-    fn render(&mut self, frame: &mut Frame, area: Rect) {
-        match self.props.active_aws_service {
-            AWSService::CloudWatchLogs => self.cloud_watch_component.render(frame, area),
+    fn render(&mut self, frame: &mut Frame, area: Rect, app_state: &AppState) {
+        match self.active_aws_service(app_state) {
+            AWSService::CloudWatchLogs => self.cloud_watch_component.render(frame, area, app_state),
             _ => {
                 frame.render_widget(
                     Block::new()
                         .title("AWS Service")
                         .title_alignment(Alignment::Center)
-                        .border_style(Style::new().fg(Color::White))
+                        .border_style(Style::new().fg(TUI_CONFIG.theme.border))
                         .borders(Borders::ALL)
                         .border_type(BorderType::Rounded),
                     area,
                 );
             }
         };
+    }
+}
+
+impl AWSServicePage {
+    fn has_focus(&self, app_state: &AppState) -> bool {
+        app_state.focus_component == self.component_type()
+    }
+
+    fn active_aws_service(&self, app_state: &AppState) -> AWSService {
+        if let Some(active_profile) = &app_state.active_profile {
+            active_profile.selected_service.clone()
+        } else {
+            AWSService::None
+        }
     }
 }

@@ -1,4 +1,3 @@
-use tokio::sync::mpsc::UnboundedSender;
 use tracing::{event, Level};
 
 use crate::{
@@ -12,11 +11,7 @@ use super::actions::CloudWatchLogsAction;
 pub struct CloudWatchLogsActionHandler;
 
 impl CloudWatchLogsActionHandler {
-    pub async fn handle(
-        state_tx: UnboundedSender<AppState>,
-        action: CloudWatchLogsAction,
-        app_state: &mut AppState,
-    ) {
+    pub async fn handle(action: CloudWatchLogsAction, app_state: &mut AppState) {
         match action {
             CloudWatchLogsAction::GetLogGroups { token } => {
                 CloudWatchLogsActionHandler::handle_get_log_groups(token, app_state).await;

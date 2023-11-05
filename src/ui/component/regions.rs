@@ -21,75 +21,32 @@ use crate::{
 
 use super::Component;
 
-struct Props {
-    region_names: Vec<String>,
-    has_focus: bool,
-}
-
-impl From<&AppState> for Props {
-    fn from(app_state: &AppState) -> Self {
-        Props {
-            region_names: match &app_state.active_profile {
-                Some(active_profile) => active_profile.regions.clone(),
-                None => vec![],
-            },
-            has_focus: matches!(app_state.focus_component, ComponentType::Regions),
-        }
-    }
-}
 pub struct RegionsComponent {
     action_tx: UnboundedSender<Action>,
-    props: Props,
+    region_names: Vec<String>,
     selected_index: u16,
     active_region_index: Option<u16>,
 }
 
 impl Component for RegionsComponent {
-    fn new(app_state: &AppState, action_tx: UnboundedSender<Action>) -> Self
+    fn new(action_tx: UnboundedSender<Action>) -> Self
     where
         Self: Sized,
     {
         RegionsComponent {
             action_tx: action_tx.clone(),
-            props: Props::from(app_state),
+            region_names: vec![],
             selected_index: 0,
             active_region_index: None,
         }
-    }
-
-    fn move_with_state(self, app_state: &AppState) -> Self
-    where
-        Self: Sized,
-    {
-        let mut component = RegionsComponent {
-            props: Props::from(app_state),
-            ..self
-        };
-
-        if let Some(active_profile) = &app_state.active_profile {
-            if let Some(selected_region) = &active_profile.selected_region {
-                if let Some(index) = component
-                    .props
-                    .region_names
-                    .iter()
-                    .position(|x| x == selected_region)
-                {
-                    let int_index: u16 = index.try_into().unwrap();
-                    component.selected_index = int_index;
-                    component.active_region_index = Some(int_index);
-                }
-            }
-        }
-
-        component
     }
 
     fn component_type(&self) -> ComponentType {
         ComponentType::Regions
     }
 
-    fn handle_key_event(&mut self, key: KeyEvent) -> anyhow::Result<()> {
-        if !self.props.has_focus {
+    fn handle_key_event(&mut self, key: KeyEvent, app_state: &AppState) -> anyhow::Result<()> {
+        if !self.has_focus(app_state) {
             if TUI_CONFIG.key_config.focus_regions.key_code == key.code
                 && TUI_CONFIG.key_config.focus_regions.key_modifier == key.modifiers
             {
@@ -121,9 +78,14 @@ impl Component for RegionsComponent {
         Ok(())
     }
 
-    fn render(&mut self, frame: &mut Frame, area: Rect) {
+    fn render(&mut self, frame: &mut Frame, area: Rect, app_state: &AppState) {
+        self.handle_profile_change(app_state);
+        self.region_names = match &app_state.active_profile {
+            Some(active_profile) => active_profile.regions.clone(),
+            None => vec![],
+        };
+
         let list_items = self
-            .props
             .region_names
             .iter()
             .enumerate()
@@ -141,11 +103,11 @@ impl Component for RegionsComponent {
                             TUI_CONFIG.key_config.focus_regions.key_string
                         ))
                         .title_alignment(Alignment::Center)
-                        .border_style(if self.props.has_focus {
-                            TUI_CONFIG.focus_border
+                        .border_style(Style::new().fg(if self.has_focus(app_state) {
+                            TUI_CONFIG.theme.border_highlight
                         } else {
-                            TUI_CONFIG.non_focus_border
-                        })
+                            TUI_CONFIG.theme.border
+                        }))
                         .borders(Borders::ALL)
                         .border_type(BorderType::Rounded),
                 )
@@ -158,8 +120,29 @@ impl Component for RegionsComponent {
 }
 
 impl RegionsComponent {
+    fn has_focus(&self, app_state: &AppState) -> bool {
+        app_state.focus_component == self.component_type()
+    }
+
+    fn handle_profile_change(&mut self, app_state: &AppState) {
+        if let Some(active_profile) = &app_state.active_profile {
+            if let Some(selected_region) = &active_profile.selected_region {
+                self.region_names = active_profile.regions.clone();
+                if let Some(index) = active_profile
+                    .regions
+                    .iter()
+                    .position(|x| x == selected_region)
+                {
+                    let int_index: u16 = index.try_into().unwrap();
+                    self.selected_index = int_index;
+                    self.active_region_index = Some(int_index);
+                }
+            }
+        }
+    }
+
     fn get_list_len(&self) -> u16 {
-        self.props.region_names.len().try_into().unwrap()
+        self.region_names.len().try_into().unwrap()
     }
 
     fn get_list_item_text(&self, index: usize, list_item_string: String) -> Text {
@@ -187,7 +170,7 @@ impl RegionsComponent {
             }
         }
         self.active_region_index = Some(index);
-        let region_name = &self.props.region_names[usize::from(index)];
+        let region_name = &self.region_names[usize::from(index)];
 
         self.action_tx.send(Action::Region {
             action: RegionAction::SelectRegion {

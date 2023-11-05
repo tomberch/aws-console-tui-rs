@@ -1,4 +1,4 @@
-use std::{cmp::min, collections::HashMap};
+use std::cmp::min;
 
 use anyhow::Context;
 use crossterm::event::KeyEvent;
@@ -12,56 +12,30 @@ use ratatui::{
 };
 use tokio::sync::mpsc::UnboundedSender;
 
+use super::Component;
 use crate::{
     state::{
         actions::actions::{Action, ProfileAction},
-        appstate::{AppState, ComponentType, ProfileSource},
+        appstate::{AppState, ComponentType},
     },
     ui::config::TUI_CONFIG,
 };
 
-use super::Component;
-
-struct Props {
-    items: HashMap<String, ProfileSource>,
-    has_focus: bool,
-}
-
-impl From<&AppState> for Props {
-    fn from(app_state: &AppState) -> Self {
-        Props {
-            items: app_state.profile_state.profile_names.clone(),
-            has_focus: matches!(app_state.focus_component, ComponentType::Profiles),
-        }
-    }
-}
 pub struct ProfilesComponent {
     action_tx: UnboundedSender<Action>,
-    props: Props,
     selected_index: u16,
     active_profile_index: Option<u16>,
 }
 
 impl Component for ProfilesComponent {
-    fn new(app_state: &AppState, action_tx: UnboundedSender<Action>) -> Self
+    fn new(action_tx: UnboundedSender<Action>) -> Self
     where
         Self: Sized,
     {
         ProfilesComponent {
             action_tx: action_tx.clone(),
-            props: Props::from(app_state),
             selected_index: 0,
             active_profile_index: None,
-        }
-    }
-
-    fn move_with_state(self, app_state: &AppState) -> Self
-    where
-        Self: Sized,
-    {
-        ProfilesComponent {
-            props: Props::from(app_state),
-            ..self
         }
     }
 
@@ -69,8 +43,8 @@ impl Component for ProfilesComponent {
         ComponentType::Profiles
     }
 
-    fn handle_key_event(&mut self, key: KeyEvent) -> anyhow::Result<()> {
-        if !self.props.has_focus {
+    fn handle_key_event(&mut self, key: KeyEvent, app_state: &AppState) -> anyhow::Result<()> {
+        if !self.has_focus(app_state) {
             if TUI_CONFIG.key_config.focus_profiles.key_code == key.code
                 && TUI_CONFIG.key_config.focus_profiles.key_modifier == key.modifiers
             {
@@ -80,7 +54,7 @@ impl Component for ProfilesComponent {
                     })
                     .context("Could not send action for focus update")?;
             }
-        } else if self.get_list_len() > 0 {
+        } else if self.get_list_len(app_state) > 0 {
             match key.code {
                 val if TUI_CONFIG.list_config.selection_up == val => {
                     self.selected_index = if self.selected_index > 0 {
@@ -90,10 +64,11 @@ impl Component for ProfilesComponent {
                     }
                 }
                 val if TUI_CONFIG.list_config.selection_down == val => {
-                    self.selected_index = min(self.selected_index + 1, self.get_list_len() - 1);
+                    self.selected_index =
+                        min(self.selected_index + 1, self.get_list_len(app_state) - 1);
                 }
                 val if TUI_CONFIG.list_config.do_selection == val => {
-                    self.set_active_profile(self.selected_index)?;
+                    self.set_active_profile(self.selected_index, app_state)?;
                 }
                 _ => {}
             };
@@ -102,10 +77,10 @@ impl Component for ProfilesComponent {
         Ok(())
     }
 
-    fn render(&mut self, frame: &mut Frame, area: Rect) {
-        let list_items = self
-            .props
-            .items
+    fn render(&mut self, frame: &mut Frame, area: Rect, app_state: &AppState) {
+        let list_items = app_state
+            .profile_state
+            .profile_names
             .keys()
             .enumerate()
             .map(|(index, element)| {
@@ -124,11 +99,11 @@ impl Component for ProfilesComponent {
                             TUI_CONFIG.key_config.focus_profiles.key_string
                         ))
                         .title_alignment(Alignment::Center)
-                        .border_style(if self.props.has_focus {
-                            TUI_CONFIG.focus_border
+                        .border_style(Style::new().fg(if self.has_focus(app_state) {
+                            TUI_CONFIG.theme.border_highlight
                         } else {
-                            TUI_CONFIG.non_focus_border
-                        })
+                            TUI_CONFIG.theme.border
+                        }))
                         .borders(Borders::ALL)
                         .border_type(BorderType::Rounded),
                 )
@@ -141,8 +116,17 @@ impl Component for ProfilesComponent {
 }
 
 impl ProfilesComponent {
-    fn get_list_len(&self) -> u16 {
-        self.props.items.len().try_into().unwrap()
+    fn has_focus(&self, app_state: &AppState) -> bool {
+        app_state.focus_component == self.component_type()
+    }
+
+    fn get_list_len(&self, app_state: &AppState) -> u16 {
+        app_state
+            .profile_state
+            .profile_names
+            .len()
+            .try_into()
+            .unwrap()
     }
 
     fn create_list_item_text(&self, index: usize, list_item_string: String) -> Text {
@@ -163,7 +147,7 @@ impl ProfilesComponent {
         }
     }
 
-    fn set_active_profile(&mut self, index: u16) -> anyhow::Result<()> {
+    fn set_active_profile(&mut self, index: u16, app_state: &AppState) -> anyhow::Result<()> {
         if let Some(active_index) = self.active_profile_index {
             if active_index == index {
                 return Ok(());
@@ -172,14 +156,23 @@ impl ProfilesComponent {
 
         self.active_profile_index = Some(index);
 
-        let profile_name =
-            &self.props.items.keys().cloned().collect::<Vec<String>>()[usize::from(index)];
+        let profile_name = &app_state
+            .profile_state
+            .profile_names
+            .keys()
+            .cloned()
+            .collect::<Vec<String>>()[usize::from(index)];
 
         self.action_tx.send(Action::Profile {
             action: ProfileAction::SelectProfile {
                 profile: (
                     profile_name.clone(),
-                    self.props.items.get(profile_name).unwrap().to_owned(),
+                    app_state
+                        .profile_state
+                        .profile_names
+                        .get(profile_name)
+                        .unwrap()
+                        .to_owned(),
                 ),
             },
         })?;

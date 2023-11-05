@@ -3,6 +3,7 @@ use crossterm::event::{KeyCode, KeyEvent};
 
 use ratatui::{
     prelude::{Alignment, Rect},
+    style::Style,
     text::Text,
     widgets::{Block, BorderType, Borders, List, ListItem, Paragraph},
     Frame,
@@ -21,30 +22,14 @@ use crate::{
 
 use super::Component;
 
-struct Props {
-    has_focus: bool,
-    log_groups: Vec<CloudWatchLogGroup>,
-    selected_log_group: Option<CloudWatchLogGroup>,
-}
-
-impl From<&AppState> for Props {
-    fn from(app_state: &AppState) -> Self {
-        Props {
-            has_focus: matches!(app_state.focus_component, ComponentType::AWSService),
-            log_groups: app_state.cloud_watch_state.log_groups.clone(),
-            selected_log_group: app_state.cloud_watch_state.selected_log_group.clone(),
-        }
-    }
-}
 pub struct CloudWatchLogsComponent {
     action_tx: UnboundedSender<Action>,
     first_time_render: bool,
     tree_state: TreeState<String>,
-    props: Props,
 }
 
 impl Component for CloudWatchLogsComponent {
-    fn new(app_state: &AppState, action_tx: UnboundedSender<Action>) -> Self
+    fn new(action_tx: UnboundedSender<Action>) -> Self
     where
         Self: Sized,
     {
@@ -52,17 +37,6 @@ impl Component for CloudWatchLogsComponent {
             action_tx: action_tx.clone(),
             first_time_render: true,
             tree_state: TreeState::default(),
-            props: Props::from(app_state),
-        }
-    }
-
-    fn move_with_state(self, app_state: &AppState) -> Self
-    where
-        Self: Sized,
-    {
-        CloudWatchLogsComponent {
-            props: Props::from(app_state),
-            ..self
         }
     }
 
@@ -70,7 +44,7 @@ impl Component for CloudWatchLogsComponent {
         ComponentType::AWSService
     }
 
-    fn handle_key_event(&mut self, key: KeyEvent) -> anyhow::Result<()> {
+    fn handle_key_event(&mut self, key: KeyEvent, _app_state: &AppState) -> anyhow::Result<()> {
         match key.code {
             KeyCode::Char('u') => self.update(),
             _ => {}
@@ -78,32 +52,36 @@ impl Component for CloudWatchLogsComponent {
         Ok(())
     }
 
-    fn render(&mut self, frame: &mut Frame, area: Rect) {
+    fn render(&mut self, frame: &mut Frame, area: Rect, app_state: &AppState) {
         if self.first_time_render {
             self.update();
             self.first_time_render = false;
         }
 
-        if self.props.log_groups.is_empty() {
+        if app_state.cloud_watch_state.log_groups.is_empty() {
             frame.render_widget(
-                Paragraph::new("\nNo Log Groups available").block(self.create_block()),
+                Paragraph::new("\nNo Log Groups available").block(self.create_block(app_state)),
                 area,
             );
         } else {
-            let list_items = self
-                .props
+            let list_items = app_state
+                .cloud_watch_state
                 .log_groups
                 .iter()
                 .map(|log_group| ListItem::new(self.create_list_item_text(log_group)))
                 .collect::<Vec<ListItem>>();
 
-            let list = List::new(list_items).block(self.create_block());
+            let list = List::new(list_items).block(self.create_block(app_state));
             frame.render_widget(list, area);
         }
     }
 }
 
 impl CloudWatchLogsComponent {
+    fn has_focus(&self, app_state: &AppState) -> bool {
+        app_state.focus_component == self.component_type()
+    }
+
     fn create_list_item_text(&self, log_group: &CloudWatchLogGroup) -> Text {
         let name = match log_group.name.clone() {
             Some(name) => name,
@@ -145,18 +123,18 @@ impl CloudWatchLogsComponent {
         });
     }
 
-    fn create_block(&self) -> Block {
+    fn create_block(&self, app_state: &AppState) -> Block {
         Block::default()
             .title(format!(
                 " CloudWatch Logs [{}] ",
                 TUI_CONFIG.key_config.focus_aws_service.key_string
             ))
             .title_alignment(Alignment::Center)
-            .border_style(if self.props.has_focus {
-                TUI_CONFIG.focus_border
+            .border_style(Style::new().fg(if self.has_focus(app_state) {
+                TUI_CONFIG.theme.border_highlight
             } else {
-                TUI_CONFIG.non_focus_border
-            })
+                TUI_CONFIG.theme.border
+            }))
             .borders(Borders::ALL)
             .border_type(BorderType::Rounded)
     }

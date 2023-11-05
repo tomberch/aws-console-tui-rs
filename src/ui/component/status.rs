@@ -1,79 +1,62 @@
 use crossterm::event::KeyEvent;
 use ratatui::{
-    prelude::Rect,
-    style::{Color, Style},
+    prelude::{Alignment, Constraint, Direction, Layout, Rect},
+    style::Style,
     text::Line,
-    widgets::{Block, BorderType, Borders, Paragraph},
+    widgets::Paragraph,
     Frame,
 };
 use tokio::sync::mpsc::UnboundedSender;
 
-use crate::state::{
-    actions::actions::Action,
-    appstate::{AppState, ComponentType},
+use crate::{
+    state::{
+        actions::actions::Action,
+        appstate::{AppState, ComponentType},
+    },
+    ui::config::TUI_CONFIG,
 };
 
 use super::Component;
 
-struct Props {
-    message: String,
-    err_message: String,
-}
-
-impl From<&AppState> for Props {
-    fn from(app_state: &AppState) -> Self {
-        Props {
-            message: app_state.status_state.message.clone(),
-            err_message: app_state.status_state.err_message.clone(),
-        }
-    }
-}
-pub struct StatusComponent {
-    props: Props,
-}
+pub struct StatusComponent {}
 
 impl Component for StatusComponent {
-    fn new(app_state: &AppState, _action_tx: UnboundedSender<Action>) -> Self
+    fn new(_action_tx: UnboundedSender<Action>) -> Self
     where
         Self: Sized,
     {
-        StatusComponent {
-            props: Props::from(app_state),
-        }
-    }
-
-    fn move_with_state(self, app_state: &AppState) -> Self
-    where
-        Self: Sized,
-    {
-        StatusComponent {
-            props: Props::from(app_state),
-        }
+        StatusComponent {}
     }
 
     fn component_type(&self) -> ComponentType {
         ComponentType::Status
     }
 
-    fn handle_key_event(&mut self, _key: KeyEvent) -> anyhow::Result<()> {
+    fn handle_key_event(&mut self, _key: KeyEvent, _app_state: &AppState) -> anyhow::Result<()> {
         Ok(())
     }
 
-    fn render(&mut self, frame: &mut Frame, area: Rect) {
-        let status_text = if self.props.err_message.is_empty() {
-            Line::styled(&self.props.message, Style::default().fg(Color::DarkGray))
+    fn render(&mut self, frame: &mut Frame, area: Rect, app_state: &AppState) {
+        let layout = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints(vec![Constraint::Length(1), Constraint::Length(1)])
+            .split(area);
+
+        let status_text = if app_state.status_state.err_message.is_empty() {
+            Line::styled(
+                &app_state.status_state.message,
+                Style::default().fg(TUI_CONFIG.theme.status_message_text),
+            )
         } else {
-            Line::styled(&self.props.err_message, Style::default().fg(Color::Red))
+            Line::styled(
+                &app_state.status_state.err_message,
+                Style::default().fg(TUI_CONFIG.theme.error_message_text),
+            )
         };
 
         frame.render_widget(
-            Paragraph::new(status_text).block(
-                Block::default()
-                    .border_style(Style::new().fg(Color::White))
-                    .borders(Borders::ALL)
-                    .border_type(BorderType::Rounded),
-            ),
-            area,
+            Paragraph::new(status_text).alignment(Alignment::Center),
+            layout[1],
         );
     }
 }

@@ -1,4 +1,3 @@
-use tokio::sync::mpsc::UnboundedSender;
 use tracing::{event, Level};
 
 use crate::state::appstate::{AWSService, AppState, ComponentType};
@@ -8,11 +7,7 @@ use super::actions::ServiceAction;
 pub struct ServiceActionHandler;
 
 impl ServiceActionHandler {
-    pub async fn handle(
-        state_tx: UnboundedSender<AppState>,
-        action: ServiceAction,
-        app_state: &mut AppState,
-    ) {
+    pub async fn handle(action: ServiceAction, app_state: &mut AppState) {
         match action {
             ServiceAction::SelectService {
                 service: aws_service,

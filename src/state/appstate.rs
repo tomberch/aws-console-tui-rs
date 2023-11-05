@@ -9,7 +9,7 @@ use crate::{
 
 use super::cloud_watch_logs_state::CloudWatchState;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum ComponentType {
     Home,
     Profiles,
@@ -64,6 +64,14 @@ pub enum AWSService {
 }
 
 #[derive(Clone, Debug, Default)]
+pub struct ToolbarState {
+    pub profile_name: String,
+    pub account: String,
+    pub user: String,
+    pub commands: HashMap<String, String>,
+}
+
+#[derive(Clone, Debug, Default)]
 pub struct StatusState {
     pub action_pending: bool,
     pub message: String,
@@ -78,6 +86,7 @@ pub struct AppState {
     pub active_profile: Option<Profile>,
     pub profile_state: ProfilesState,
     pub region_state: RegionsState,
+    pub toolbar_state: ToolbarState,
     pub status_state: StatusState,
     pub cloud_watch_state: CloudWatchState,
 }
@@ -94,6 +103,12 @@ impl AppState {
             },
             region_state: RegionsState {
                 region_names: vec![],
+            },
+            toolbar_state: ToolbarState {
+                profile_name: String::default(),
+                account: String::default(),
+                user: String::default(),
+                commands: HashMap::from([("<ctrl-q>".into(), "Quit".into())]),
             },
             status_state: StatusState {
                 action_pending: false,

@@ -21,9 +21,7 @@ impl LoginRepository {
         aws_config: &AWSConfig,
     ) -> SdkConfig {
         let sdk_config = match profile_source {
-            ProfileSource::Environment => {
-                LoginRepository::build_env_config(&aws_config.endpoint).await
-            }
+            ProfileSource::Environment => LoginRepository::build_env_config(aws_config).await,
             ProfileSource::CredentialsFile => {
                 LoginRepository::build_credentials_config(profile_name, aws_config).await
             }
@@ -61,11 +59,13 @@ impl LoginRepository {
         }
     }
 
-    async fn build_env_config(endpoint_url: &str) -> SdkConfig {
-        aws_config::from_env()
-            .endpoint_url(endpoint_url)
-            .load()
-            .await
+    async fn build_env_config(aws_config: &AWSConfig) -> SdkConfig {
+        let mut loader = aws_config::from_env();
+        if !aws_config.endpoint.is_empty() {
+            loader = loader.endpoint_url(aws_config.endpoint.as_str());
+        }
+
+        loader.load().await
     }
 
     async fn build_credentials_config(profile_name: &str, aws_config: &AWSConfig) -> SdkConfig {

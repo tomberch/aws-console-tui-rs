@@ -1,26 +1,18 @@
-use tokio::sync::mpsc::UnboundedSender;
-
 use crate::{
     repository::{ec2::EC2Repository, login::LoginRepository},
     state::appstate::{AWSService, AppState, ComponentType, Profile, ProfileSource},
     ui::config::TUI_CONFIG,
 };
 
-use super::{actions::ProfileAction, ActionHandler};
+use super::actions::ProfileAction;
 
 pub struct ProfileActionHandler;
 
 impl ProfileActionHandler {
-    pub async fn handle(
-        state_tx: UnboundedSender<AppState>,
-        action: ProfileAction,
-        app_state: &mut AppState,
-    ) {
+    pub async fn handle(action: ProfileAction, app_state: &mut AppState) {
         match action {
             ProfileAction::SelectProfile { profile } => {
-                ActionHandler::initiate_action_pending(state_tx.clone(), app_state);
                 let _ = ProfileActionHandler::handle_select_profile(&profile, app_state).await;
-                ActionHandler::release_action_pending(state_tx.clone(), app_state);
             }
         }
     }
@@ -103,14 +95,13 @@ impl ProfileActionHandler {
         };
 
         if profile.err_message.is_empty() {
-            app_state.status_state.message = format!(
-                "Profile: {}, Account: {}, User: {}",
-                profile_name,
-                profile.account.clone(),
-                profile.user.clone()
-            );
+            app_state.toolbar_state.profile_name = profile_name.into();
+            app_state.toolbar_state.account = profile.account.clone();
+            app_state.toolbar_state.user = profile.user.clone();
+            app_state.status_state.message = String::default();
             app_state.status_state.err_message = String::default();
             app_state.status_state.err_message_backtrace = String::default();
+
             let _ = app_state.active_profile.insert(profile);
             app_state.focus_component = ComponentType::Services;
         } else {

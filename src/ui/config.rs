@@ -4,13 +4,11 @@ use ratatui::style::{Color, Style};
 
 pub struct TuiConfig<'a> {
     pub tick_rate_in_ms: u64,
-    pub root: Style,
-    pub focus_border: Style,
-    pub non_focus_border: Style,
     pub key_config: KeyConfig<'a>,
     pub list_config: ListConfig<'a>,
     pub services: Services<'a>,
     pub messages: Messages<'a>,
+    pub theme: Theme,
 }
 
 pub struct KeyConfig<'a> {
@@ -54,11 +52,17 @@ pub struct Messages<'a> {
     pub error_describe_cloud_watch_log_groups: &'a str,
 }
 
+pub struct Theme {
+    pub background: Color,
+    pub border: Color,
+    pub border_highlight: Color,
+    pub toolbar_info_topic: Color,
+    pub status_message_text: Color,
+    pub error_message_text: Color,
+}
+
 pub const TUI_CONFIG: TuiConfig = TuiConfig {
     tick_rate_in_ms: 250,
-    root: Style::new().bg(DARK_BLUE),
-    focus_border: Style::new().fg(Color::Green),
-    non_focus_border: Style::new().fg(Color::White),
     key_config: KeyConfig {
         cycle_forward: KeyDescription {
             key_string: TAB,
@@ -112,16 +116,12 @@ pub const TUI_CONFIG: TuiConfig = TuiConfig {
         error_describe_cloud_watch_log_groups:
             "Error: CloudWatch Log Groups could not be fetched. Press <CTRL-m> for more information",
     },
+    theme: Theme {
+        background: Color::Indexed(232),
+        border: Color::Rgb(0, 126, 200),
+        border_highlight: Color::Rgb(135, 206, 250),
+        toolbar_info_topic: Color::Rgb(231, 120, 0),
+        status_message_text: Color::Rgb(226, 199, 160),
+        error_message_text: Color::Rgb(204, 0, 0),
+    },
 };
-
-const DARK_BLUE: Color = Color::Rgb(16, 24, 48);
-// const LIGHT_BLUE: Color = Color::Rgb(64, 96, 192);
-// const LIGHT_YELLOW: Color = Color::Rgb(192, 192, 96);
-// const LIGHT_GREEN: Color = Color::Rgb(64, 192, 96);
-// const LIGHT_RED: Color = Color::Rgb(192, 96, 96);
-// const RED: Color = Color::Indexed(160);
-// const BLACK: Color = Color::Indexed(232); // not really black, often #080808
-// const DARK_GRAY: Color = Color::Indexed(238);
-// const MID_GRAY: Color = Color::Indexed(244);
-// const LIGHT_GRAY: Color = Color::Indexed(250);
-// const WHITE: Color = Color::Indexed(255); // not really white, often #eeeeee

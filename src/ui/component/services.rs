@@ -22,36 +22,20 @@ use crate::{
 
 use super::Component;
 
-struct Props {
-    has_focus: bool,
-    is_active_profile_set: bool,
-}
-
-impl From<&AppState> for Props {
-    fn from(app_state: &AppState) -> Self {
-        Props {
-            has_focus: matches!(app_state.focus_component, ComponentType::Services),
-            is_active_profile_set: app_state.active_profile.is_some(),
-        }
-    }
-}
 pub struct ServicesComponent<'a> {
     action_tx: UnboundedSender<Action>,
-    props: Props,
-
     service_names: [&'a str; 5],
     selected_index: u16,
     active_service_index: Option<u16>,
 }
 
 impl<'a> Component for ServicesComponent<'a> {
-    fn new(app_state: &AppState, action_tx: UnboundedSender<Action>) -> Self
+    fn new(action_tx: UnboundedSender<Action>) -> Self
     where
         Self: Sized,
     {
         ServicesComponent {
             action_tx: action_tx.clone(),
-            props: Props::from(app_state),
             selected_index: 0,
             service_names: [
                 TUI_CONFIG.services.cloud_watch_logs,
@@ -64,22 +48,12 @@ impl<'a> Component for ServicesComponent<'a> {
         }
     }
 
-    fn move_with_state(self, app_state: &AppState) -> Self
-    where
-        Self: Sized,
-    {
-        ServicesComponent {
-            props: Props::from(app_state),
-            ..self
-        }
-    }
-
     fn component_type(&self) -> ComponentType {
         ComponentType::Services
     }
 
-    fn handle_key_event(&mut self, key: KeyEvent) -> anyhow::Result<()> {
-        if !self.props.has_focus {
+    fn handle_key_event(&mut self, key: KeyEvent, app_state: &AppState) -> anyhow::Result<()> {
+        if !self.has_focus(app_state) {
             if TUI_CONFIG.key_config.focus_services.key_code == key.code
                 && TUI_CONFIG.key_config.focus_services.key_modifier == key.modifiers
             {
@@ -89,7 +63,7 @@ impl<'a> Component for ServicesComponent<'a> {
                     })
                     .context("Could not send action for focus update")?;
             }
-        } else if self.props.is_active_profile_set {
+        } else if app_state.active_profile.is_some() {
             match key.code {
                 val if TUI_CONFIG.list_config.selection_up == val => {
                     self.selected_index = if self.selected_index > 0 {
@@ -111,7 +85,7 @@ impl<'a> Component for ServicesComponent<'a> {
         Ok(())
     }
 
-    fn render(&mut self, frame: &mut Frame, area: Rect) {
+    fn render(&mut self, frame: &mut Frame, area: Rect, app_state: &AppState) {
         let list_items = self
             .service_names
             .into_iter()
@@ -119,7 +93,7 @@ impl<'a> Component for ServicesComponent<'a> {
             .map(|(index, element)| ListItem::new(self.get_list_item_text(index, element.into())))
             .collect::<Vec<ListItem>>();
 
-        let selected_index = if self.props.is_active_profile_set {
+        let selected_index = if app_state.active_profile.is_some() {
             Some(self.selected_index.into())
         } else {
             None
@@ -135,11 +109,11 @@ impl<'a> Component for ServicesComponent<'a> {
                             TUI_CONFIG.key_config.focus_services.key_string
                         ))
                         .title_alignment(Alignment::Center)
-                        .border_style(if self.props.has_focus {
-                            TUI_CONFIG.focus_border
+                        .border_style(Style::new().fg(if self.has_focus(app_state) {
+                            TUI_CONFIG.theme.border_highlight
                         } else {
-                            TUI_CONFIG.non_focus_border
-                        })
+                            TUI_CONFIG.theme.border
+                        }))
                         .borders(Borders::ALL)
                         .border_type(BorderType::Rounded),
                 )
@@ -152,6 +126,10 @@ impl<'a> Component for ServicesComponent<'a> {
 }
 
 impl<'a> ServicesComponent<'a> {
+    fn has_focus(&self, app_state: &AppState) -> bool {
+        app_state.focus_component == self.component_type()
+    }
+
     fn get_list_len(&self) -> u16 {
         self.service_names.len().try_into().unwrap()
     }

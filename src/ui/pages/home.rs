@@ -9,28 +9,15 @@ use crate::ui::component::profiles::ProfilesComponent;
 use crate::ui::component::regions::RegionsComponent;
 use crate::ui::component::services::ServicesComponent;
 use crate::ui::component::status::StatusComponent;
+use crate::ui::component::toolbar::ToolbarComponent;
 use crate::ui::component::Component;
 use crate::ui::config::TUI_CONFIG;
 
 use super::service::AWSServicePage;
 
-struct Props {
-    action_pending: bool,
-    focus_component: ComponentType,
-}
-
-impl From<&AppState> for Props {
-    fn from(app_state: &AppState) -> Self {
-        Props {
-            action_pending: app_state.status_state.action_pending,
-            focus_component: app_state.focus_component.clone(),
-        }
-    }
-}
-
 pub struct HomePage<'a> {
-    pub action_tx: UnboundedSender<Action>,
-    props: Props,
+    action_tx: UnboundedSender<Action>,
+    toolbar_component: ToolbarComponent,
     profiles_component: ProfilesComponent,
     regions_component: RegionsComponent,
     services_component: ServicesComponent<'a>,
@@ -39,34 +26,19 @@ pub struct HomePage<'a> {
 }
 
 impl<'a> Component for HomePage<'a> {
-    fn new(app_state: &AppState, action_tx: UnboundedSender<Action>) -> Self
+    fn new(action_tx: UnboundedSender<Action>) -> Self
     where
         Self: Sized,
     {
         HomePage {
             action_tx: action_tx.clone(),
-            props: Props::from(app_state),
-            profiles_component: ProfilesComponent::new(app_state, action_tx.clone()),
-            regions_component: RegionsComponent::new(app_state, action_tx.clone()),
-            services_component: ServicesComponent::new(app_state, action_tx.clone()),
-            aws_service_page: AWSServicePage::new(app_state, action_tx.clone()),
-            status_component: StatusComponent::new(app_state, action_tx.clone()),
-        }
-    }
 
-    fn move_with_state(self, app_state: &AppState) -> Self
-    where
-        Self: Sized,
-    {
-        HomePage {
-            props: Props::from(app_state),
-            // propagate the update to the child components
-            profiles_component: self.profiles_component.move_with_state(app_state),
-            regions_component: self.regions_component.move_with_state(app_state),
-            services_component: self.services_component.move_with_state(app_state),
-            status_component: self.status_component.move_with_state(app_state),
-            aws_service_page: self.aws_service_page.move_with_state(app_state),
-            ..self
+            toolbar_component: ToolbarComponent::new(action_tx.clone()),
+            profiles_component: ProfilesComponent::new(action_tx.clone()),
+            regions_component: RegionsComponent::new(action_tx.clone()),
+            services_component: ServicesComponent::new(action_tx.clone()),
+            aws_service_page: AWSServicePage::new(action_tx.clone()),
+            status_component: StatusComponent::new(action_tx.clone()),
         }
     }
 
@@ -74,14 +46,14 @@ impl<'a> Component for HomePage<'a> {
         ComponentType::Home
     }
 
-    fn handle_key_event(&mut self, key: KeyEvent) -> anyhow::Result<()> {
-        if self.props.action_pending {
+    fn handle_key_event(&mut self, key: KeyEvent, app_state: &AppState) -> anyhow::Result<()> {
+        if app_state.status_state.action_pending {
             return Ok(());
         }
 
         match key.code {
             KeyCode::Tab => {
-                let component_type = match self.props.focus_component {
+                let component_type = match app_state.focus_component {
                     ComponentType::Profiles => ComponentType::Regions,
                     ComponentType::Regions => ComponentType::Services,
                     ComponentType::Services => ComponentType::AWSService,
@@ -93,7 +65,7 @@ impl<'a> Component for HomePage<'a> {
                     .context("Could not send action for focus cycling forward update")?;
             }
             KeyCode::BackTab => {
-                let component_type = match self.props.focus_component {
+                let component_type = match app_state.focus_component {
                     ComponentType::Profiles => ComponentType::AWSService,
                     ComponentType::Regions => ComponentType::Profiles,
                     ComponentType::Services => ComponentType::Regions,
@@ -105,28 +77,35 @@ impl<'a> Component for HomePage<'a> {
                     .context("Could not send action for focus cycling forward update")?;
             }
             _ => {
-                self.profiles_component.handle_key_event(key)?;
-                self.regions_component.handle_key_event(key)?;
-                self.services_component.handle_key_event(key)?;
-                self.aws_service_page.handle_key_event(key)?;
+                self.profiles_component.handle_key_event(key, app_state)?;
+                self.regions_component.handle_key_event(key, app_state)?;
+                self.services_component.handle_key_event(key, app_state)?;
+                self.aws_service_page.handle_key_event(key, app_state)?;
             }
         }
 
         Ok(())
     }
 
-    fn render(&mut self, frame: &mut Frame, area: Rect) {
-        frame.render_widget(Block::new().style(TUI_CONFIG.root), frame.size());
+    fn render(&mut self, frame: &mut Frame, area: Rect, app_state: &AppState) {
+        frame.render_widget(
+            Block::new().style(Style::new().bg(TUI_CONFIG.theme.background)),
+            frame.size(),
+        );
 
         let screen_layout = Layout::default()
             .direction(Direction::Vertical)
-            .constraints(vec![Constraint::Min(1), Constraint::Length(3)])
+            .constraints(vec![
+                Constraint::Length(7),
+                Constraint::Min(1),
+                Constraint::Length(2),
+            ])
             .split(area);
 
         let main_layout = Layout::default()
             .direction(Direction::Horizontal)
             .constraints(vec![Constraint::Percentage(20), Constraint::Percentage(80)])
-            .split(screen_layout[0]);
+            .split(screen_layout[1]);
 
         let list_layout = Layout::default()
             .direction(Direction::Vertical)
@@ -137,18 +116,17 @@ impl<'a> Component for HomePage<'a> {
             ])
             .split(main_layout[0]);
 
-        frame.render_widget(
-            Block::new()
-                .border_style(Style::new().fg(Color::White))
-                .borders(Borders::ALL)
-                .border_type(BorderType::Rounded),
-            screen_layout[1],
-        );
-
-        self.profiles_component.render(frame, list_layout[0]);
-        self.regions_component.render(frame, list_layout[1]);
-        self.services_component.render(frame, list_layout[2]);
-        self.aws_service_page.render(frame, main_layout[1]);
-        self.status_component.render(frame, screen_layout[1]);
+        self.toolbar_component
+            .render(frame, screen_layout[0], app_state);
+        self.profiles_component
+            .render(frame, list_layout[0], app_state);
+        self.regions_component
+            .render(frame, list_layout[1], app_state);
+        self.services_component
+            .render(frame, list_layout[2], app_state);
+        self.aws_service_page
+            .render(frame, main_layout[1], app_state);
+        self.status_component
+            .render(frame, screen_layout[2], app_state);
     }
 }

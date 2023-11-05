@@ -12,19 +12,16 @@ pub mod profiles;
 pub mod regions;
 pub mod services;
 pub mod status;
+pub mod toolbar;
 
 pub trait Component {
-    fn new(app_state: &AppState, action_tx: UnboundedSender<Action>) -> Self
-    where
-        Self: Sized;
-
-    fn move_with_state(self, state: &AppState) -> Self
+    fn new(action_tx: UnboundedSender<Action>) -> Self
     where
         Self: Sized;
 
     fn component_type(&self) -> ComponentType;
 
-    fn handle_key_event(&mut self, key: KeyEvent) -> anyhow::Result<()>;
+    fn handle_key_event(&mut self, key: KeyEvent, app_state: &AppState) -> anyhow::Result<()>;
 
-    fn render(&mut self, frame: &mut Frame, area: Rect);
+    fn render(&mut self, frame: &mut Frame, area: Rect, app_state: &AppState);
 }
