@@ -26,6 +26,7 @@ pub struct RegionsComponent {
     region_names: Vec<String>,
     selected_index: u16,
     active_region_index: Option<u16>,
+    active_profile_name: Option<String>,
 }
 
 impl Component for RegionsComponent {
@@ -38,6 +39,7 @@ impl Component for RegionsComponent {
             region_names: vec![],
             selected_index: 0,
             active_region_index: None,
+            active_profile_name: None,
         }
     }
 
@@ -126,16 +128,19 @@ impl RegionsComponent {
 
     fn handle_profile_change(&mut self, app_state: &AppState) {
         if let Some(active_profile) = &app_state.active_profile {
-            if let Some(selected_region) = &active_profile.selected_region {
-                self.region_names = active_profile.regions.clone();
-                if let Some(index) = active_profile
-                    .regions
-                    .iter()
-                    .position(|x| x == selected_region)
-                {
-                    let int_index: u16 = index.try_into().unwrap();
-                    self.selected_index = int_index;
-                    self.active_region_index = Some(int_index);
+            if self.active_profile_name.as_ref() != Some(&active_profile.name) {
+                let _ = self.active_profile_name.insert(active_profile.name.clone());
+                if let Some(selected_region) = &active_profile.selected_region {
+                    self.region_names = active_profile.regions.clone();
+                    if let Some(index) = active_profile
+                        .regions
+                        .iter()
+                        .position(|x| x == selected_region)
+                    {
+                        let int_index: u16 = index.try_into().unwrap();
+                        self.selected_index = int_index;
+                        self.active_region_index = Some(int_index);
+                    }
                 }
             }
         }

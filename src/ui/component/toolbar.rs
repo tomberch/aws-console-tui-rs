@@ -46,7 +46,7 @@ impl Component for ToolbarComponent {
             .split(area);
 
         let topic_color = TUI_CONFIG.theme.toolbar_info_topic;
-        let info_table = Table::new(vec![
+        let table_rows = vec![
             Row::new(vec![
                 Cell::from("Profile:").style(Style::default().fg(topic_color)),
                 Cell::from(app_state.toolbar_state.profile_name.as_str())
@@ -62,9 +62,21 @@ impl Component for ToolbarComponent {
                 Cell::from(app_state.toolbar_state.user.as_str())
                     .style(Style::default().fg(Color::White)),
             ]),
-        ])
-        .column_spacing(2)
-        .widths(&[Constraint::Length(8), Constraint::Length(15)]);
+            Row::new(vec![
+                Cell::from("CPU:").style(Style::default().fg(topic_color)),
+                Cell::from(app_state.toolbar_state.cpu_usage.as_str())
+                    .style(Style::default().fg(Color::White)),
+            ]),
+            Row::new(vec![
+                Cell::from("Memory:").style(Style::default().fg(topic_color)),
+                Cell::from(app_state.toolbar_state.memory_usage.as_str())
+                    .style(Style::default().fg(Color::White)),
+            ]),
+        ];
+
+        let info_table = Table::new(table_rows)
+            .column_spacing(2)
+            .widths(&[Constraint::Length(8), Constraint::Length(15)]);
 
         frame.render_stateful_widget(info_table, layout[0], &mut self.table_state);
     }

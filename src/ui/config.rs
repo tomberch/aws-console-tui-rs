@@ -4,6 +4,7 @@ use ratatui::style::{Color, Style};
 
 pub struct TuiConfig<'a> {
     pub tick_rate_in_ms: u64,
+    pub sys_info_update_rate_in_sec: u64,
     pub key_config: KeyConfig<'a>,
     pub list_config: ListConfig<'a>,
     pub services: Services<'a>,
@@ -63,6 +64,7 @@ pub struct Theme {
 
 pub const TUI_CONFIG: TuiConfig = TuiConfig {
     tick_rate_in_ms: 250,
+    sys_info_update_rate_in_sec: 5,
     key_config: KeyConfig {
         cycle_forward: KeyDescription {
             key_string: TAB,

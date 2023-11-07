@@ -1,11 +1,15 @@
-use std::time::Duration;
+use std::{sync::Arc, time::Duration};
 
 use crate::ui::component::Component;
 use anyhow::Context;
 use crossterm::event::{Event, EventStream, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 use futures::{FutureExt, StreamExt};
 use ratatui::prelude::Rect;
-use tokio::sync::mpsc::{self, UnboundedReceiver};
+
+use tokio::sync::{
+    mpsc::{self, UnboundedReceiver},
+    RwLock,
+};
 use tokio_util::sync::CancellationToken;
 
 use crate::state::{actions::actions::Action, appstate::AppState};
@@ -24,14 +28,14 @@ impl UIManager {
 
     pub async fn run(
         self,
-        mut state_rx: UnboundedReceiver<AppState>,
+        mut state_rx: UnboundedReceiver<Arc<RwLock<AppState>>>,
         cancellation_token: CancellationToken,
     ) -> anyhow::Result<()> {
         let mut terminal = Term::start().context("Cannot start the terminal")?;
         let mut ticker = tokio::time::interval(Duration::from_millis(TUI_CONFIG.tick_rate_in_ms));
         let mut event_reader = EventStream::new();
 
-        let mut app_state = state_rx.recv().await.unwrap();
+        let mut app_state = state_rx.recv().await.unwrap().read().await.to_owned();
         let mut home_page = { HomePage::new(self.action_tx.clone()) };
 
         loop {
@@ -77,7 +81,7 @@ impl UIManager {
                     None => todo!(),
                 },
                 Some(state) = state_rx.recv() =>
-                    app_state = state,
+                    app_state = state.read().await.to_owned(),
 
             }
 

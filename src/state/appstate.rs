@@ -17,8 +17,8 @@ pub enum ComponentType {
     Services,
     Status,
     AWSService,
-    NoAWSService,
-    CloudWatch,
+    //  NoAWSService,
+    //  CloudWatch,
 }
 
 #[derive(Clone, Debug)]
@@ -68,6 +68,8 @@ pub struct ToolbarState {
     pub profile_name: String,
     pub account: String,
     pub user: String,
+    pub cpu_usage: String,
+    pub memory_usage: String,
     pub commands: HashMap<String, String>,
 }
 
@@ -108,6 +110,8 @@ impl AppState {
                 profile_name: String::default(),
                 account: String::default(),
                 user: String::default(),
+                cpu_usage: String::default(),
+                memory_usage: String::default(),
                 commands: HashMap::from([("<ctrl-q>".into(), "Quit".into())]),
             },
             status_state: StatusState {

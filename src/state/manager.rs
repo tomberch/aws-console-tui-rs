@@ -1,4 +1,10 @@
-use tokio::sync::mpsc::{self, UnboundedReceiver, UnboundedSender};
+use std::{sync::Arc, time::Duration};
+
+use sysinfo::{CpuExt, CpuRefreshKind, System, SystemExt};
+use tokio::sync::{
+    mpsc::{self, UnboundedReceiver, UnboundedSender},
+    RwLock,
+};
 use tokio_util::sync::CancellationToken;
 
 use crate::{
@@ -8,18 +14,19 @@ use crate::{
         profile_action_handler::ProfileActionHandler, region_action_handler::RegionActionHandler,
         service_action_handler::ServiceActionHandler,
     },
+    ui::config::TUI_CONFIG,
 };
 
 use super::{actions::actions::Action, appstate::AppState};
 
 pub struct StateManager {
     app_config: AppConfig,
-    state_tx: UnboundedSender<AppState>,
+    state_tx: UnboundedSender<Arc<RwLock<AppState>>>,
 }
 
 impl StateManager {
-    pub fn new(app_config: AppConfig) -> (Self, UnboundedReceiver<AppState>) {
-        let (state_tx, state_rx) = mpsc::unbounded_channel::<AppState>();
+    pub fn new(app_config: AppConfig) -> (Self, UnboundedReceiver<Arc<RwLock<AppState>>>) {
+        let (state_tx, state_rx) = mpsc::unbounded_channel::<Arc<RwLock<AppState>>>();
         (
             StateManager {
                 app_config,
@@ -34,25 +41,41 @@ impl StateManager {
         mut action_rx: UnboundedReceiver<Action>,
         cancellation_token: CancellationToken,
     ) -> anyhow::Result<()> {
-        let mut app_state = AppState::new(&self.app_config);
+        let app_state = Arc::new(RwLock::new(AppState::new(&self.app_config)));
+        let mut sys_info_interval =
+            tokio::time::interval(Duration::from_secs(TUI_CONFIG.sys_info_update_rate_in_sec));
+
+        let mut sys_info = System::new_all();
+        sys_info.refresh_cpu_specifics(CpuRefreshKind::new().with_cpu_usage());
+        sys_info.refresh_memory();
 
         // set the initial state once
         self.state_tx.send(app_state.clone())?;
 
         loop {
             tokio::select! {
-                _ = cancellation_token.cancelled() => {
-                    break;
+            _ = cancellation_token.cancelled() => {
+            break
+                }
 
-                     }
+            _ = sys_info_interval.tick() => {
+                let mut mut_app_state = app_state.write().await;
+                sys_info.refresh_cpu_specifics(CpuRefreshKind::new().with_cpu_usage());
+                sys_info.refresh_memory();
+                mut_app_state.toolbar_state.memory_usage = format!("{}/{}", human_bytes::human_bytes(sys_info.used_memory() as f64), human_bytes::human_bytes(sys_info.total_memory() as f64));
+                mut_app_state.toolbar_state.cpu_usage = format!("{:.2} %", sys_info.global_cpu_info().cpu_usage());
 
-            Some(action) = action_rx.recv() => match action {
-                Action::SetFocus { component_type } => app_state.focus_component = component_type,
-                Action::Profile{ action }=>{ProfileActionHandler::handle(action, &mut app_state).await},
-                Action::Region{action} => {RegionActionHandler::handle(action, &mut app_state)},
-                Action::Service{ action }=>{ServiceActionHandler::handle( action, &mut app_state).await},
-                Action::CloudWatchLogs {action} =>{CloudWatchLogsActionHandler::handle(action, &mut app_state).await},
-            }}
+            }
+
+            Some(action) = action_rx.recv() => {
+                let mut mut_app_state = app_state.write().await;
+                match action {
+                    Action::SetFocus { component_type } => mut_app_state.focus_component = component_type,
+                    Action::Profile{ action }=>{ProfileActionHandler::handle(action, &mut mut_app_state).await},
+                    Action::Region{action} => {RegionActionHandler::handle(action, &mut mut_app_state)},
+                    Action::Service{ action }=>{ServiceActionHandler::handle( action, &mut mut_app_state).await},
+                    Action::CloudWatchLogs {action} =>{CloudWatchLogsActionHandler::handle(action, &mut mut_app_state).await},
+                }}}
 
             self.state_tx.send(app_state.clone())?;
         }
