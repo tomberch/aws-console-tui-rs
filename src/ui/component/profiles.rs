@@ -48,11 +48,7 @@ impl Component for ProfilesComponent {
             if TUI_CONFIG.key_config.focus_profiles.key_code == key.code
                 && TUI_CONFIG.key_config.focus_profiles.key_modifier == key.modifiers
             {
-                self.action_tx
-                    .send(Action::SetFocus {
-                        component_type: self.component_type(),
-                    })
-                    .context("Could not send action for focus update")?;
+                self.send_focus_action(self.component_type())?;
             }
         } else if self.get_list_len(app_state) > 0 {
             match key.code {
@@ -74,6 +70,17 @@ impl Component for ProfilesComponent {
             };
         }
 
+        Ok(())
+    }
+
+    fn send_focus_action(&mut self, component_type: ComponentType) -> Result<(), anyhow::Error> {
+        self.action_tx
+            .send(Action::SetFocus {
+                component_type,
+                breadcrumbs: vec![TUI_CONFIG.breadcrumbs.profiles.into()],
+                menu: vec![],
+            })
+            .context("Could not send action for focus update")?;
         Ok(())
     }
 

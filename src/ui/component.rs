@@ -21,6 +21,10 @@ pub trait Component {
 
     fn component_type(&self) -> ComponentType;
 
+    fn send_focus_action(&mut self, _component_type: ComponentType) -> Result<(), anyhow::Error> {
+        Ok(())
+    }
+
     fn handle_key_event(&mut self, key: KeyEvent, app_state: &AppState) -> anyhow::Result<()>;
 
     fn render(&mut self, frame: &mut Frame, area: Rect, app_state: &AppState);

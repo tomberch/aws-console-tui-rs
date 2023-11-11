@@ -1,3 +1,4 @@
+use anyhow::Context;
 use chrono::{DateTime, SecondsFormat};
 use crossterm::event::{KeyCode, KeyEvent};
 
@@ -49,6 +50,22 @@ impl Component for CloudWatchLogsComponent {
             KeyCode::Char('u') => self.update(),
             _ => {}
         }
+        Ok(())
+    }
+
+    fn send_focus_action(&mut self, component_type: ComponentType) -> Result<(), anyhow::Error> {
+        self.action_tx
+            .send(Action::SetFocus {
+                component_type,
+                breadcrumbs: vec![TUI_CONFIG.breadcrumbs.services.into()],
+                menu: vec![
+                    TUI_CONFIG.menu.details.into(),
+                    TUI_CONFIG.menu.tab.into(),
+                    TUI_CONFIG.menu.back_tab.into(),
+                    TUI_CONFIG.menu.quit.into(),
+                ],
+            })
+            .context("Could not send action for focus update")?;
         Ok(())
     }
 

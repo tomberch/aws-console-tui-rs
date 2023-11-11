@@ -1,4 +1,3 @@
-use anyhow::Context;
 use crossterm::event::KeyEvent;
 use ratatui::{prelude::*, widgets::*};
 use tokio::sync::mpsc::UnboundedSender;
@@ -12,7 +11,7 @@ use crate::ui::config::TUI_CONFIG;
 
 pub struct AWSServicePage {
     pub action_tx: UnboundedSender<Action>,
-    cloud_watch_component: CloudWatchLogsComponent,
+    active_component: Box<dyn Component>,
 }
 
 impl Component for AWSServicePage {
@@ -22,7 +21,7 @@ impl Component for AWSServicePage {
     {
         AWSServicePage {
             action_tx: action_tx.clone(),
-            cloud_watch_component: CloudWatchLogsComponent::new(action_tx.clone()),
+            active_component: Box::new(CloudWatchLogsComponent::new(action_tx.clone())),
         }
     }
 
@@ -35,40 +34,34 @@ impl Component for AWSServicePage {
             if TUI_CONFIG.key_config.focus_profiles.key_code == key.code
                 && TUI_CONFIG.key_config.focus_profiles.key_modifier == key.modifiers
             {
-                self.action_tx
-                    .send(Action::SetFocus {
-                        component_type: self.component_type(),
-                    })
-                    .context("Could not send action for focus update")?;
+                self.send_focus_action(self.component_type())?;
             }
         } else {
-            match self.active_aws_service(app_state) {
-                AWSService::CloudWatchLogs => self
-                    .cloud_watch_component
-                    .handle_key_event(key, app_state)?,
-                AWSService::DynamoDB => {}
-                _ => {}
-            };
+            self.active_component.handle_key_event(key, app_state)?;
         }
 
         Ok(())
     }
 
+    fn send_focus_action(&mut self, _component_type: ComponentType) -> Result<(), anyhow::Error> {
+        self.active_component
+            .send_focus_action(self.component_type())
+    }
+
     fn render(&mut self, frame: &mut Frame, area: Rect, app_state: &AppState) {
-        match self.active_aws_service(app_state) {
-            AWSService::CloudWatchLogs => self.cloud_watch_component.render(frame, area, app_state),
-            _ => {
-                frame.render_widget(
-                    Block::new()
-                        .title("AWS Service")
-                        .title_alignment(Alignment::Center)
-                        .border_style(Style::new().fg(TUI_CONFIG.theme.border))
-                        .borders(Borders::ALL)
-                        .border_type(BorderType::Rounded),
-                    area,
-                );
-            }
-        };
+        if self.has_active_aws_service(app_state) {
+            self.active_component.render(frame, area, app_state)
+        } else {
+            frame.render_widget(
+                Block::new()
+                    .title("AWS Service")
+                    .title_alignment(Alignment::Center)
+                    .border_style(Style::new().fg(TUI_CONFIG.theme.border))
+                    .borders(Borders::ALL)
+                    .border_type(BorderType::Rounded),
+                area,
+            );
+        }
     }
 }
 
@@ -77,11 +70,11 @@ impl AWSServicePage {
         app_state.focus_component == self.component_type()
     }
 
-    fn active_aws_service(&self, app_state: &AppState) -> AWSService {
+    fn has_active_aws_service(&self, app_state: &AppState) -> bool {
         if let Some(active_profile) = &app_state.active_profile {
-            active_profile.selected_service.clone()
+            active_profile.selected_service != AWSService::None
         } else {
-            AWSService::None
+            false
         }
     }
 }

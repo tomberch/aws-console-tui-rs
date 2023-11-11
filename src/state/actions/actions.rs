@@ -1,4 +1,6 @@
-use crate::state::appstate::{AWSService, ComponentType, ProfileSource};
+use std::time::Duration;
+
+use crate::state::appstate::{AWSService, ComponentType, MenuItem, ProfileSource};
 
 #[derive(Debug, Clone)]
 pub enum ProfileAction {
@@ -22,9 +24,24 @@ pub enum CloudWatchLogsAction {
 
 #[derive(Debug, Clone)]
 pub enum Action {
-    SetFocus { component_type: ComponentType },
-    Profile { action: ProfileAction },
-    Region { action: RegionAction },
-    Service { action: ServiceAction },
-    CloudWatchLogs { action: CloudWatchLogsAction },
+    SetFocus {
+        component_type: ComponentType,
+        breadcrumbs: Vec<String>,
+        menu: Vec<MenuItem>,
+    },
+    RenderDuration {
+        duration: Duration,
+    },
+    Profile {
+        action: ProfileAction,
+    },
+    Region {
+        action: RegionAction,
+    },
+    Service {
+        action: ServiceAction,
+    },
+    CloudWatchLogs {
+        action: CloudWatchLogsAction,
+    },
 }

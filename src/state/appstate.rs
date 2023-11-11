@@ -1,10 +1,12 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, time::Duration};
 
 use aws_config::SdkConfig;
+use ratatui::style::Color;
 
 use crate::{
     config::config::{AWSConfig, AppConfig},
     repository::profile::get_available_profiles,
+    ui::config::{MenuItemText, TUI_CONFIG},
 };
 
 use super::cloud_watch_logs_state::CloudWatchState;
@@ -28,7 +30,7 @@ pub enum ProfileSource {
     ConfigFile,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Debug, Clone)]
 pub struct Profile {
     pub name: String,
     pub source: ProfileSource,
@@ -70,7 +72,24 @@ pub struct ToolbarState {
     pub user: String,
     pub cpu_usage: String,
     pub memory_usage: String,
-    pub commands: HashMap<String, String>,
+    pub menu: Vec<MenuItem>,
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct MenuItem {
+    pub command: String,
+    pub title: String,
+    pub common_command: bool,
+}
+
+impl From<MenuItemText<'_>> for MenuItem {
+    fn from(val: MenuItemText<'_>) -> Self {
+        MenuItem {
+            command: val.command.into(),
+            title: val.title.into(),
+            common_command: val.common_command,
+        }
+    }
 }
 
 #[derive(Clone, Debug, Default)]
@@ -79,6 +98,12 @@ pub struct StatusState {
     pub message: String,
     pub err_message: String,
     pub err_message_backtrace: String,
+    pub breadcrumbs: Vec<String>,
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct MeasureState {
+    pub render_duration: String,
 }
 
 #[derive(Clone, Debug)]
@@ -90,6 +115,7 @@ pub struct AppState {
     pub region_state: RegionsState,
     pub toolbar_state: ToolbarState,
     pub status_state: StatusState,
+    pub measure_state: MeasureState,
     pub cloud_watch_state: CloudWatchState,
 }
 
@@ -107,19 +133,25 @@ impl AppState {
                 region_names: vec![],
             },
             toolbar_state: ToolbarState {
-                profile_name: String::default(),
-                account: String::default(),
-                user: String::default(),
+                profile_name: "none".into(),
+                account: "none".into(),
+                user: "none".into(),
                 cpu_usage: String::default(),
                 memory_usage: String::default(),
-                commands: HashMap::from([("<ctrl-q>".into(), "Quit".into())]),
+                menu: vec![
+                    TUI_CONFIG.menu.back_tab.into(),
+                    TUI_CONFIG.menu.tab.into(),
+                    TUI_CONFIG.menu.quit.into(),
+                ],
             },
             status_state: StatusState {
                 action_pending: false,
                 message: "No profile active. Please select profile and press <Enter>".into(),
                 err_message: "".into(),
                 err_message_backtrace: "".into(),
+                breadcrumbs: vec![TUI_CONFIG.breadcrumbs.profiles.into()],
             },
+            measure_state: MeasureState::default(),
             cloud_watch_state: CloudWatchState::default(),
         }
     }

@@ -1,4 +1,3 @@
-use anyhow::Context;
 use crossterm::event::{KeyCode, KeyEvent};
 use ratatui::{prelude::*, widgets::*};
 use tokio::sync::mpsc::UnboundedSender;
@@ -16,7 +15,6 @@ use crate::ui::config::TUI_CONFIG;
 use super::service::AWSServicePage;
 
 pub struct HomePage<'a> {
-    action_tx: UnboundedSender<Action>,
     toolbar_component: ToolbarComponent,
     profiles_component: ProfilesComponent,
     regions_component: RegionsComponent,
@@ -31,8 +29,6 @@ impl<'a> Component for HomePage<'a> {
         Self: Sized,
     {
         HomePage {
-            action_tx: action_tx.clone(),
-
             toolbar_component: ToolbarComponent::new(action_tx.clone()),
             profiles_component: ProfilesComponent::new(action_tx.clone()),
             regions_component: RegionsComponent::new(action_tx.clone()),
@@ -60,9 +56,7 @@ impl<'a> Component for HomePage<'a> {
                     ComponentType::AWSService => ComponentType::Profiles,
                     _ => return Ok(()),
                 };
-                self.action_tx
-                    .send(Action::SetFocus { component_type })
-                    .context("Could not send action for focus cycling forward update")?;
+                self.send_focus_action(component_type)?;
             }
             KeyCode::BackTab => {
                 let component_type = match app_state.focus_component {
@@ -72,9 +66,7 @@ impl<'a> Component for HomePage<'a> {
                     ComponentType::AWSService => ComponentType::Services,
                     _ => return Ok(()),
                 };
-                self.action_tx
-                    .send(Action::SetFocus { component_type })
-                    .context("Could not send action for focus cycling forward update")?;
+                self.send_focus_action(component_type)?;
             }
             _ => {
                 self.profiles_component.handle_key_event(key, app_state)?;
@@ -85,6 +77,16 @@ impl<'a> Component for HomePage<'a> {
         }
 
         Ok(())
+    }
+
+    fn send_focus_action(&mut self, component_type: ComponentType) -> Result<(), anyhow::Error> {
+        match component_type {
+            ComponentType::Profiles => self.profiles_component.send_focus_action(component_type),
+            ComponentType::Regions => self.regions_component.send_focus_action(component_type),
+            ComponentType::Services => self.services_component.send_focus_action(component_type),
+            ComponentType::AWSService => self.aws_service_page.send_focus_action(component_type),
+            _ => Ok(()),
+        }
     }
 
     fn render(&mut self, frame: &mut Frame, area: Rect, app_state: &AppState) {

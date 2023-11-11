@@ -62,7 +62,7 @@ impl StateManager {
                 let mut mut_app_state = app_state.write().await;
                 sys_info.refresh_cpu_specifics(CpuRefreshKind::new().with_cpu_usage());
                 sys_info.refresh_memory();
-                mut_app_state.toolbar_state.memory_usage = format!("{}/{}", human_bytes::human_bytes(sys_info.used_memory() as f64), human_bytes::human_bytes(sys_info.total_memory() as f64));
+                mut_app_state.toolbar_state.memory_usage = format!("{:.2} %", sys_info.used_memory() as f64 / sys_info.total_memory() as f64 * 100.0);
                 mut_app_state.toolbar_state.cpu_usage = format!("{:.2} %", sys_info.global_cpu_info().cpu_usage());
 
             }
@@ -70,11 +70,16 @@ impl StateManager {
             Some(action) = action_rx.recv() => {
                 let mut mut_app_state = app_state.write().await;
                 match action {
-                    Action::SetFocus { component_type } => mut_app_state.focus_component = component_type,
-                    Action::Profile{ action }=>{ProfileActionHandler::handle(action, &mut mut_app_state).await},
-                    Action::Region{action} => {RegionActionHandler::handle(action, &mut mut_app_state)},
-                    Action::Service{ action }=>{ServiceActionHandler::handle( action, &mut mut_app_state).await},
-                    Action::CloudWatchLogs {action} =>{CloudWatchLogsActionHandler::handle(action, &mut mut_app_state).await},
+                    Action::SetFocus { component_type, breadcrumbs, menu } => {
+                        mut_app_state.focus_component = component_type;
+                        mut_app_state.status_state.breadcrumbs = breadcrumbs;
+                        mut_app_state.toolbar_state.menu = menu;
+                    },
+                    Action::RenderDuration{ duration } => {mut_app_state.measure_state.render_duration = format!("{:?}", duration) },
+                    Action::Profile{ action } => {ProfileActionHandler::handle(action, &mut mut_app_state).await },
+                    Action::Region{action} => {RegionActionHandler::handle(action, &mut mut_app_state) },
+                    Action::Service{ action }=>{ServiceActionHandler::handle( action, &mut mut_app_state).await },
+                    Action::CloudWatchLogs {action} =>{CloudWatchLogsActionHandler::handle(action, &mut mut_app_state).await },
                 }}}
 
             self.state_tx.send(app_state.clone())?;

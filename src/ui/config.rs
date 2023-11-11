@@ -5,9 +5,12 @@ use ratatui::style::{Color, Style};
 pub struct TuiConfig<'a> {
     pub tick_rate_in_ms: u64,
     pub sys_info_update_rate_in_sec: u64,
+    pub performance_measure_rate_in_sec: u64,
     pub key_config: KeyConfig<'a>,
     pub list_config: ListConfig<'a>,
     pub services: Services<'a>,
+    pub breadcrumbs: Breadcrumbs<'a>,
+    pub menu: Menu<'a>,
     pub messages: Messages<'a>,
     pub theme: Theme,
 }
@@ -53,18 +56,47 @@ pub struct Messages<'a> {
     pub error_describe_cloud_watch_log_groups: &'a str,
 }
 
+pub struct Breadcrumbs<'a> {
+    pub profiles: &'a str,
+    pub regions: &'a str,
+    pub services: &'a str,
+    pub cloud_watch_logs: &'a str,
+}
+
+pub struct Menu<'a> {
+    pub quit: MenuItemText<'a>,
+    pub tab: MenuItemText<'a>,
+    pub back_tab: MenuItemText<'a>,
+    pub details: MenuItemText<'a>,
+    pub up: MenuItemText<'a>,
+    pub down: MenuItemText<'a>,
+    pub select: MenuItemText<'a>,
+}
+
+pub struct MenuItemText<'a> {
+    pub title: &'a str,
+    pub command: &'a str,
+    pub common_command: bool,
+}
+
 pub struct Theme {
     pub background: Color,
     pub border: Color,
     pub border_highlight: Color,
+    pub command: Color,
+    pub common_command: Color,
     pub toolbar_info_topic: Color,
     pub status_message_text: Color,
     pub error_message_text: Color,
+    pub breadcrumb_foreground: Color,
+    pub breadcrumb_background: Color,
+    pub breadcrumb_background_active: Color,
 }
 
 pub const TUI_CONFIG: TuiConfig = TuiConfig {
     tick_rate_in_ms: 250,
     sys_info_update_rate_in_sec: 5,
+    performance_measure_rate_in_sec: 5,
     key_config: KeyConfig {
         cycle_forward: KeyDescription {
             key_string: TAB,
@@ -118,12 +150,60 @@ pub const TUI_CONFIG: TuiConfig = TuiConfig {
         error_describe_cloud_watch_log_groups:
             "Error: CloudWatch Log Groups could not be fetched. Press <CTRL-m> for more information",
     },
+    breadcrumbs: Breadcrumbs {
+        profiles: " <profiles> ",
+        regions: " <regions> ",
+        services: " <services> ",
+        cloud_watch_logs: "<logs>",
+    },
+    menu: Menu {
+        up: MenuItemText {
+            title: "prev element",
+            command: "<up>",
+            common_command: true,
+        },
+        down: MenuItemText {
+            title: "next element",
+            command: "<down",
+            common_command: true,
+        },
+        select: MenuItemText {
+            title: "select",
+            command: "<enter>",
+            common_command: true,
+        },
+        quit: MenuItemText {
+            title: "quit",
+            command: "<ctrl-c>",
+            common_command: true,
+        },
+        tab: MenuItemText {
+            title: "cycle forward",
+            command: "<tab>",
+            common_command: true,
+        },
+        back_tab: MenuItemText {
+            title: "cycle backward",
+            command: "<shift-tab>",
+            common_command: true,
+        },
+        details: MenuItemText {
+            title: "Details",
+            command: "<d>",
+            common_command: false,
+        },
+    },
     theme: Theme {
         background: Color::Indexed(232),
         border: Color::Rgb(0, 126, 200),
         border_highlight: Color::Rgb(135, 206, 250),
+        command: Color::Rgb(255, 27, 255),
+        common_command: Color::Rgb(30, 144, 255),
         toolbar_info_topic: Color::Rgb(231, 120, 0),
         status_message_text: Color::Rgb(226, 199, 160),
         error_message_text: Color::Rgb(204, 0, 0),
+        breadcrumb_foreground: Color::Indexed(232),
+        breadcrumb_background: Color::Rgb(0, 255, 255),
+        breadcrumb_background_active: Color::Rgb(255, 165, 0),
     },
 };

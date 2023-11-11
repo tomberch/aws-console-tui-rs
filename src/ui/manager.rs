@@ -6,9 +6,12 @@ use crossterm::event::{Event, EventStream, KeyCode, KeyEvent, KeyEventKind, KeyM
 use futures::{FutureExt, StreamExt};
 use ratatui::prelude::Rect;
 
-use tokio::sync::{
-    mpsc::{self, UnboundedReceiver},
-    RwLock,
+use tokio::{
+    sync::{
+        mpsc::{self, UnboundedReceiver},
+        RwLock,
+    },
+    time::Instant,
 };
 use tokio_util::sync::CancellationToken;
 
@@ -33,10 +36,15 @@ impl UIManager {
     ) -> anyhow::Result<()> {
         let mut terminal = Term::start().context("Cannot start the terminal")?;
         let mut ticker = tokio::time::interval(Duration::from_millis(TUI_CONFIG.tick_rate_in_ms));
+        let mut performance_measure_ticker = tokio::time::interval(Duration::from_secs(
+            TUI_CONFIG.performance_measure_rate_in_sec,
+        ));
         let mut event_reader = EventStream::new();
 
         let mut app_state = state_rx.recv().await.unwrap().read().await.to_owned();
         let mut home_page = { HomePage::new(self.action_tx.clone()) };
+
+        let mut render_duration = Duration::default();
 
         loop {
             let crossterm_event = event_reader.next().fuse();
@@ -47,6 +55,11 @@ impl UIManager {
                 }
 
                 _ = ticker.tick() => (),
+
+                _ = performance_measure_ticker.tick() => {
+                     self.action_tx.send(Action::RenderDuration { duration: render_duration });
+                }
+
 
                 maybe_event = crossterm_event => match maybe_event {
                     Some(Ok(event)) => {
@@ -85,9 +98,11 @@ impl UIManager {
 
             }
 
+            let start = Instant::now();
             terminal
                 .draw(|frame| home_page.render(frame, frame.size(), &app_state))
                 .context("could not render to the terminal")?;
+            render_duration = start.elapsed();
         }
 
         let _ = Term::stop();
