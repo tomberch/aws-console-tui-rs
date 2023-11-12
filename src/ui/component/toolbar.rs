@@ -1,5 +1,3 @@
-use std::ops::Add;
-
 use crossterm::event::KeyEvent;
 use ratatui::{
     prelude::{Constraint, Direction, Layout, Rect},
@@ -58,7 +56,7 @@ impl Component for ToolbarComponent {
 impl ToolbarComponent {
     fn render_info_table(&mut self, frame: &mut Frame, area: Rect, app_state: &AppState) {
         let topic_color = TUI_CONFIG.theme.toolbar_info_topic;
-        let table_rows = vec![
+        let mut table_rows = vec![
             Row::new(vec![
                 Cell::from("Profile:").style(Style::default().fg(topic_color)),
                 Cell::from(app_state.toolbar_state.profile_name.as_str())
@@ -84,75 +82,84 @@ impl ToolbarComponent {
                 Cell::from(app_state.toolbar_state.memory_usage.as_str())
                     .style(Style::default().fg(Color::White)),
             ]),
-            Row::new(vec![
-                Cell::from("Perf:").style(Style::default().fg(topic_color)),
-                Cell::from(app_state.measure_state.render_duration.as_str())
-                    .style(Style::default().fg(Color::White)),
-            ]),
         ];
+
+        if app_state.measure_state.is_active {
+            table_rows.push(Row::new(vec![
+                Cell::from("Perf:").style(Style::default().fg(topic_color)),
+                Cell::from(format!(
+                    "{}/{}",
+                    app_state.measure_state.render_duration.as_str(),
+                    app_state.measure_state.action_duration.as_str()
+                ))
+                .style(Style::default().fg(Color::White)),
+            ]));
+        }
 
         let info_table = Table::new(table_rows)
             .column_spacing(2)
-            .widths(&[Constraint::Length(8), Constraint::Length(15)]);
+            .widths(&[Constraint::Length(8), Constraint::Length(24)]);
 
         frame.render_stateful_widget(info_table, area, &mut self.info_table_state);
     }
 
     fn render_menu_table(&mut self, frame: &mut Frame, area: Rect, app_state: &AppState) {
-        let menu_color = TUI_CONFIG.theme.command;
         let mut table_rows: Vec<Row> = vec![];
         let mut max_len_command: [usize; 3] = [0, 0, 0];
         let mut max_len_title: [usize; 3] = [0, 0, 0];
+        let empty_menu_item = MenuItem {
+            command: "".into(),
+            title: "".into(),
+            color_index: 0,
+        };
 
         for index in 0..6 {
-            let menu_item1 = self.get_menu_item_text(index, &app_state.toolbar_state.menu);
-            let menu_item2 = self.get_menu_item_text(index + 6, &app_state.toolbar_state.menu);
-            let menu_item3 = self.get_menu_item_text(index + 12, &app_state.toolbar_state.menu);
-            // max_len_command[0] = std::cmp::max(command1.len(), max_len_command[0]);
-            // max_len_title[0] = std::cmp::max(title1.len(), max_len_title[0]);
-            // max_len_command[1] = std::cmp::max(command2.len(), max_len_command[1]);
-            // max_len_title[1] = std::cmp::max(title2.len(), max_len_title[1]);
-            // max_len_command[2] = std::cmp::max(command3.len(), max_len_command[2]);
-            // max_len_title[2] = std::cmp::max(title3.len(), max_len_title[2]);
+            let menu_item1 = app_state.toolbar_state.menu_items[0]
+                .get(index)
+                .unwrap_or(&empty_menu_item);
+            let menu_item2 = app_state.toolbar_state.menu_items[1]
+                .get(index)
+                .unwrap_or(&empty_menu_item);
+            let menu_item3 = app_state.toolbar_state.menu_items[2]
+                .get(index)
+                .unwrap_or(&empty_menu_item);
+
+            max_len_command[0] = std::cmp::max(menu_item1.command.len(), max_len_command[0]);
+            max_len_title[0] = std::cmp::max(menu_item1.title.len(), max_len_title[0]);
+            max_len_command[1] = std::cmp::max(menu_item2.command.len(), max_len_command[1]);
+            max_len_title[1] = std::cmp::max(menu_item2.title.len(), max_len_title[1]);
+            max_len_command[2] = std::cmp::max(menu_item3.command.len(), max_len_command[2]);
+            max_len_title[2] = std::cmp::max(menu_item3.title.len(), max_len_title[2]);
+
             table_rows.push(Row::new(vec![
-                Cell::from(menu_item1.command).style(Style::default().fg(menu_color)),
-                Cell::from(menu_item1.title).style(Style::default().fg(Color::White)),
-                Cell::from(menu_item2.command).style(Style::default().fg(menu_color)),
-                Cell::from(menu_item2.title).style(Style::default().fg(Color::White)),
-                Cell::from(menu_item3.command).style(Style::default().fg(menu_color)),
-                Cell::from(menu_item3.title).style(Style::default().fg(Color::White)),
-            ]))
+                Cell::from(menu_item1.command.as_str()).style(
+                    Style::default().fg(TUI_CONFIG.theme.command_colors[menu_item1.color_index]),
+                ),
+                Cell::from(menu_item1.title.as_str()).style(Style::default().fg(Color::White)),
+                Cell::from(menu_item2.command.as_str()).style(
+                    Style::default().fg(TUI_CONFIG.theme.command_colors[menu_item2.color_index]),
+                ),
+                Cell::from(menu_item2.title.as_str()).style(Style::default().fg(Color::White)),
+                Cell::from(menu_item3.command.as_str()).style(
+                    Style::default().fg(TUI_CONFIG.theme.command_colors[menu_item3.color_index]),
+                ),
+                Cell::from(menu_item3.title.as_str()).style(Style::default().fg(Color::White)),
+            ]));
         }
 
-        // let constraints = [
-        //     Constraint::Length(max_len_command[0] as u16),
-        //     Constraint::Length(max_len_title[0] as u16 + 2),
-        //     Constraint::Length(max_len_command[1] as u16),
-        //     Constraint::Length(max_len_title[1] as u16 + 2),
-        //     Constraint::Length(max_len_command[2] as u16),
-        //     Constraint::Length(max_len_title[2] as u16 + 2),
-        // ];
-        let menu_table = Table::new(table_rows).column_spacing(1).widths(&[
-            Constraint::Min(0),
-            Constraint::Min(0),
-            Constraint::Min(0),
-            Constraint::Min(0),
-            Constraint::Min(0),
-            Constraint::Min(0),
-        ]);
+        let constraints = [
+            Constraint::Length(max_len_command[0] as u16),
+            Constraint::Length(max_len_title[0] as u16 + 3),
+            Constraint::Length(max_len_command[1] as u16),
+            Constraint::Length(max_len_title[1] as u16 + 3),
+            Constraint::Length(max_len_command[2] as u16),
+            Constraint::Length(max_len_title[2] as u16),
+        ];
+
+        let menu_table = Table::new(table_rows)
+            .column_spacing(2)
+            .widths(&constraints);
 
         frame.render_stateful_widget(menu_table, area, &mut self.menu_table_state);
-    }
-
-    fn get_menu_item_text<'a>(
-        &self,
-        index: usize,
-        menu_items: &'a Vec<MenuItem>,
-    ) -> Option<&'a MenuItem> {
-        if index < menu_items.len() {
-            Some(&menu_items[index])
-        } else {
-            None
-        }
     }
 }

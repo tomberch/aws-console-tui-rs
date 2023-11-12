@@ -8,7 +8,7 @@ pub(crate) const CREDENTIALS_KEY: &str = "aws.credentialsPath";
 pub(crate) const ENDPOINT_KEY: &str = "aws.endpoint";
 pub(crate) const LOG_LEVEL_KEY: &str = "logging.level";
 pub(crate) const LOG_FILE_PATH: &str = "logging.logFilePath";
-pub(crate) const CONSOLE_KEY: &str = "logging.logToConsole";
+pub(crate) const PERFORMANCE_KEY: &str = "performance";
 
 pub fn parse_commands() -> HashMap<String, String> {
     let matches = command!()
@@ -55,12 +55,12 @@ pub fn parse_commands() -> HashMap<String, String> {
                 .long_help("Set the path where the logfile should be written. If not set, no file logging will take place."),
         )
         .arg(
-            Arg::new(CONSOLE_KEY)
-                .short('o')
-                .long("console")
+            Arg::new(PERFORMANCE_KEY)
+                .short('p')
+                .long("performance")
                 .num_args(0)
-                .help("Log to console")
-                .long_help("Log to console additionally to the default file logging"),
+                .help("Activate performance measurement")
+                .long_help("Activate the performance measurement for the rendering and action loop"),
         )
         .get_matches();
 
@@ -71,23 +71,23 @@ fn create_arguments(matches: clap::ArgMatches) -> HashMap<String, String> {
     let mut arguments = HashMap::new();
 
     if let Some(aws_credentials_path) = matches.get_one::<String>(CREDENTIALS_KEY) {
-        arguments.insert(CREDENTIALS_KEY.to_string(), aws_credentials_path.clone());
+        arguments.insert(CREDENTIALS_KEY.into(), aws_credentials_path.clone());
     }
 
     if let Some(aws_endpoint) = matches.get_one::<String>(ENDPOINT_KEY) {
-        arguments.insert(ENDPOINT_KEY.to_string(), aws_endpoint.clone());
+        arguments.insert(ENDPOINT_KEY.into(), aws_endpoint.clone());
     }
 
     if let Some(log_level) = matches.get_one::<String>(LOG_LEVEL_KEY) {
-        arguments.insert(LOG_LEVEL_KEY.to_string(), log_level.clone());
+        arguments.insert(LOG_LEVEL_KEY.into(), log_level.clone());
     }
 
     if let Some(log_file_path) = matches.get_one::<String>(LOG_FILE_PATH) {
-        arguments.insert(LOG_FILE_PATH.to_string(), log_file_path.clone());
+        arguments.insert(LOG_FILE_PATH.into(), log_file_path.clone());
     }
 
-    if matches.get_flag(CONSOLE_KEY) {
-        arguments.insert(CONSOLE_KEY.to_string(), "yes".to_string());
+    if matches.get_flag(PERFORMANCE_KEY) {
+        arguments.insert(PERFORMANCE_KEY.into(), "yes".into());
     }
 
     arguments

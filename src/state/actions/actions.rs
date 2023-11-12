@@ -24,24 +24,12 @@ pub enum CloudWatchLogsAction {
 
 #[derive(Debug, Clone)]
 pub enum Action {
-    SetFocus {
-        component_type: ComponentType,
-        breadcrumbs: Vec<String>,
-        menu: Vec<MenuItem>,
-    },
-    RenderDuration {
-        duration: Duration,
-    },
-    Profile {
-        action: ProfileAction,
-    },
-    Region {
-        action: RegionAction,
-    },
-    Service {
-        action: ServiceAction,
-    },
-    CloudWatchLogs {
-        action: CloudWatchLogsAction,
-    },
+    SetFocus { component_type: ComponentType },
+    SetMenu { menu_items: [Vec<MenuItem>; 3] },
+    SetBreadcrumbs { breadcrumbs: Vec<String> },
+    RenderDuration { duration: Duration },
+    Profile { action: ProfileAction },
+    Region { action: RegionAction },
+    Service { action: ServiceAction },
+    CloudWatchLogs { action: CloudWatchLogsAction },
 }

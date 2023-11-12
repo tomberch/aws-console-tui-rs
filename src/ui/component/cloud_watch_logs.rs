@@ -1,16 +1,16 @@
-use anyhow::Context;
+use std::cmp::min;
+
 use chrono::{DateTime, SecondsFormat};
 use crossterm::event::{KeyCode, KeyEvent};
 
 use ratatui::{
     prelude::{Alignment, Rect},
-    style::Style,
+    style::{Color, Style},
     text::Text,
-    widgets::{Block, BorderType, Borders, List, ListItem, Paragraph},
+    widgets::{Block, BorderType, Borders, List, ListItem, ListState, Paragraph},
     Frame,
 };
 use tokio::sync::mpsc::UnboundedSender;
-use tui_tree_widget::TreeState;
 
 use crate::{
     state::{
@@ -25,8 +25,9 @@ use super::Component;
 
 pub struct CloudWatchLogsComponent {
     action_tx: UnboundedSender<Action>,
+    selected_index: u16,
+    active_index: Option<u16>,
     first_time_render: bool,
-    tree_state: TreeState<String>,
 }
 
 impl Component for CloudWatchLogsComponent {
@@ -36,8 +37,9 @@ impl Component for CloudWatchLogsComponent {
     {
         CloudWatchLogsComponent {
             action_tx: action_tx.clone(),
+            selected_index: 0,
+            active_index: None,
             first_time_render: true,
-            tree_state: TreeState::default(),
         }
     }
 
@@ -45,27 +47,42 @@ impl Component for CloudWatchLogsComponent {
         ComponentType::AWSService
     }
 
-    fn handle_key_event(&mut self, key: KeyEvent, _app_state: &AppState) -> anyhow::Result<()> {
-        match key.code {
-            KeyCode::Char('u') => self.update(),
-            _ => {}
-        }
+    fn set_focus(&self) -> anyhow::Result<()> {
+        self.action_tx.send(Action::SetBreadcrumbs {
+            breadcrumbs: vec![TUI_CONFIG.breadcrumbs.cloud_watch_logs.into()],
+        })?;
+
+        self.action_tx.send(Action::SetMenu {
+            menu_items: [
+                vec![],
+                vec![TUI_CONFIG.menu.details.into()],
+                self.get_default_menu(),
+            ],
+        })?;
+
         Ok(())
     }
 
-    fn send_focus_action(&mut self, component_type: ComponentType) -> Result<(), anyhow::Error> {
-        self.action_tx
-            .send(Action::SetFocus {
-                component_type,
-                breadcrumbs: vec![TUI_CONFIG.breadcrumbs.services.into()],
-                menu: vec![
-                    TUI_CONFIG.menu.details.into(),
-                    TUI_CONFIG.menu.tab.into(),
-                    TUI_CONFIG.menu.back_tab.into(),
-                    TUI_CONFIG.menu.quit.into(),
-                ],
-            })
-            .context("Could not send action for focus update")?;
+    fn handle_key_event(&mut self, key: KeyEvent, app_state: &AppState) -> anyhow::Result<()> {
+        match key.code {
+            KeyCode::Char('u') => self.update(),
+            val if TUI_CONFIG.list_config.selection_up == val => {
+                self.selected_index = if self.selected_index > 0 {
+                    self.selected_index - 1
+                } else {
+                    0
+                }
+            }
+            val if TUI_CONFIG.list_config.selection_down == val => {
+                self.selected_index =
+                    min(self.selected_index + 1, self.get_list_len(app_state) - 1);
+            }
+            val if TUI_CONFIG.list_config.do_selection == val => {
+                self.set_active_log_group(self.selected_index, app_state)?;
+            }
+
+            _ => {}
+        }
         Ok(())
     }
 
@@ -85,11 +102,19 @@ impl Component for CloudWatchLogsComponent {
                 .cloud_watch_state
                 .log_groups
                 .iter()
-                .map(|log_group| ListItem::new(self.create_list_item_text(log_group)))
+                .enumerate()
+                .map(|(index, log_group)| {
+                    ListItem::new(self.create_list_item_text(index, log_group))
+                })
                 .collect::<Vec<ListItem>>();
 
-            let list = List::new(list_items).block(self.create_block(app_state));
-            frame.render_widget(list, area);
+            let mut list_state =
+                ListState::default().with_selected(Some(self.selected_index.into()));
+            let list = List::new(list_items)
+                .block(self.create_block(app_state))
+                .highlight_style(TUI_CONFIG.list_config.selected_style)
+                .highlight_symbol(TUI_CONFIG.list_config.selected_symbol);
+            frame.render_stateful_widget(list, area, &mut list_state);
         }
     }
 }
@@ -99,21 +124,26 @@ impl CloudWatchLogsComponent {
         app_state.focus_component == self.component_type()
     }
 
-    fn create_list_item_text(&self, log_group: &CloudWatchLogGroup) -> Text {
+    fn get_list_len(&self, app_state: &AppState) -> u16 {
+        app_state
+            .cloud_watch_state
+            .log_groups
+            .len()
+            .try_into()
+            .unwrap()
+    }
+
+    fn create_list_item_text(&self, index: usize, log_group: &CloudWatchLogGroup) -> Text {
+        let is_active_profile_index = match self.active_index {
+            None => false,
+            Some(active_index) => usize::try_from(active_index)
+                .map(|active_index| active_index == index)
+                .unwrap_or(false),
+        };
+
         let name = match log_group.name.clone() {
             Some(name) => name,
             None => "unknown name".into(),
-        };
-
-        let retention_days = match log_group.retention_days {
-            Some(retention_days) => {
-                if retention_days == 1 {
-                    "1 day".into()
-                } else {
-                    format!("{} days", retention_days)
-                }
-            }
-            None => "indefinite".into(),
         };
 
         let date_created = match log_group.date_created {
@@ -123,15 +153,19 @@ impl CloudWatchLogsComponent {
             None => "unknown creation date".into(),
         };
 
-        let stored_bytes = match log_group.stored_bytes {
-            Some(stored_bytes) => human_bytes::human_bytes(stored_bytes as f64),
-            None => "unknown byte size".into(),
-        };
+        let list_item_string = format!("{}  {}", date_created, name);
+        if is_active_profile_index {
+            Text::styled(
+                format!("**{}", list_item_string),
+                Style::default().fg(Color::Yellow),
+            )
+        } else {
+            Text::from(list_item_string)
+        }
+    }
 
-        Text::from(format!(
-            "{}  {: <8}  {: >10}  {}",
-            date_created, retention_days, stored_bytes, name
-        ))
+    fn set_active_log_group(&mut self, index: u16, app_state: &AppState) -> anyhow::Result<()> {
+        Ok(())
     }
 
     fn update(&self) {
@@ -155,32 +189,4 @@ impl CloudWatchLogsComponent {
             .borders(Borders::ALL)
             .border_type(BorderType::Rounded)
     }
-
-    // fn first(&mut self) {
-    //     self.tree_state.select_first();
-    // }
-
-    // fn last(&mut self) {
-    //     self.tree_state.select_last(&self.items);
-    // }
-
-    // fn down(&mut self) {
-    //     self.tree_state.key_down(&self.items);
-    // }
-
-    // fn up(&mut self) {
-    //     self.tree_state.key_up(&self.items);
-    // }
-
-    // fn left(&mut self) {
-    //     self.tree_state.key_left();
-    // }
-
-    // fn right(&mut self) {
-    //     self.tree_state.key_right();
-    // }
-
-    // fn toggle(&mut self) {
-    //     self.tree_state.toggle_selected();
-    // }
 }

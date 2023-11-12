@@ -1,12 +1,11 @@
-use std::{collections::HashMap, time::Duration};
+use std::collections::HashMap;
 
 use aws_config::SdkConfig;
-use ratatui::style::Color;
 
 use crate::{
     config::config::{AWSConfig, AppConfig},
     repository::profile::get_available_profiles,
-    ui::config::{MenuItemText, TUI_CONFIG},
+    ui::config::MenuItemText,
 };
 
 use super::cloud_watch_logs_state::CloudWatchState;
@@ -72,14 +71,14 @@ pub struct ToolbarState {
     pub user: String,
     pub cpu_usage: String,
     pub memory_usage: String,
-    pub menu: Vec<MenuItem>,
+    pub menu_items: [Vec<MenuItem>; 3],
 }
 
 #[derive(Clone, Debug, Default)]
 pub struct MenuItem {
     pub command: String,
     pub title: String,
-    pub common_command: bool,
+    pub color_index: usize,
 }
 
 impl From<MenuItemText<'_>> for MenuItem {
@@ -87,7 +86,7 @@ impl From<MenuItemText<'_>> for MenuItem {
         MenuItem {
             command: val.command.into(),
             title: val.title.into(),
-            common_command: val.common_command,
+            color_index: val.color_index,
         }
     }
 }
@@ -103,7 +102,9 @@ pub struct StatusState {
 
 #[derive(Clone, Debug, Default)]
 pub struct MeasureState {
+    pub is_active: bool,
     pub render_duration: String,
+    pub action_duration: String,
 }
 
 #[derive(Clone, Debug)]
@@ -138,20 +139,19 @@ impl AppState {
                 user: "none".into(),
                 cpu_usage: String::default(),
                 memory_usage: String::default(),
-                menu: vec![
-                    TUI_CONFIG.menu.back_tab.into(),
-                    TUI_CONFIG.menu.tab.into(),
-                    TUI_CONFIG.menu.quit.into(),
-                ],
+                menu_items: [vec![], vec![], vec![]],
             },
             status_state: StatusState {
                 action_pending: false,
                 message: "No profile active. Please select profile and press <Enter>".into(),
                 err_message: "".into(),
                 err_message_backtrace: "".into(),
-                breadcrumbs: vec![TUI_CONFIG.breadcrumbs.profiles.into()],
+                breadcrumbs: vec![],
             },
-            measure_state: MeasureState::default(),
+            measure_state: MeasureState {
+                is_active: !app_config.performance.is_empty(),
+                ..Default::default()
+            },
             cloud_watch_state: CloudWatchState::default(),
         }
     }

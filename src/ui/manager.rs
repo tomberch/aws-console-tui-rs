@@ -57,7 +57,7 @@ impl UIManager {
                 _ = ticker.tick() => (),
 
                 _ = performance_measure_ticker.tick() => {
-                     self.action_tx.send(Action::RenderDuration { duration: render_duration });
+                     self.action_tx.send(Action::RenderDuration { duration: render_duration })?;
                 }
 
 

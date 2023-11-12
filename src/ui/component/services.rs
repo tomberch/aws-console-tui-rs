@@ -1,6 +1,5 @@
 use std::cmp::min;
 
-use anyhow::Context;
 use crossterm::event::KeyEvent;
 
 use ratatui::{
@@ -52,12 +51,24 @@ impl<'a> Component for ServicesComponent<'a> {
         ComponentType::Services
     }
 
+    fn set_focus(&self) -> anyhow::Result<()> {
+        self.action_tx.send(Action::SetBreadcrumbs {
+            breadcrumbs: vec![TUI_CONFIG.breadcrumbs.services.into()],
+        })?;
+
+        self.action_tx.send(Action::SetMenu {
+            menu_items: [vec![], vec![], self.get_default_menu()],
+        })?;
+
+        self.send_focus_action(&self.action_tx)
+    }
+
     fn handle_key_event(&mut self, key: KeyEvent, app_state: &AppState) -> anyhow::Result<()> {
         if !self.has_focus(app_state) {
             if TUI_CONFIG.key_config.focus_services.key_code == key.code
                 && TUI_CONFIG.key_config.focus_services.key_modifier == key.modifiers
             {
-                self.send_focus_action(self.component_type())?;
+                self.set_focus()?;
             }
         } else if app_state.active_profile.is_some() {
             match key.code {
@@ -78,17 +89,6 @@ impl<'a> Component for ServicesComponent<'a> {
             };
         }
 
-        Ok(())
-    }
-
-    fn send_focus_action(&mut self, component_type: ComponentType) -> Result<(), anyhow::Error> {
-        self.action_tx
-            .send(Action::SetFocus {
-                component_type,
-                breadcrumbs: vec![TUI_CONFIG.breadcrumbs.services.into()],
-                menu: vec![],
-            })
-            .context("Could not send action for focus update")?;
         Ok(())
     }
 

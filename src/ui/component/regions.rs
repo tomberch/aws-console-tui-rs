@@ -1,6 +1,5 @@
 use std::cmp::min;
 
-use anyhow::Context;
 use crossterm::event::KeyEvent;
 use ratatui::{
     prelude::{Alignment, Rect},
@@ -47,12 +46,24 @@ impl Component for RegionsComponent {
         ComponentType::Regions
     }
 
+    fn set_focus(&self) -> anyhow::Result<()> {
+        self.action_tx.send(Action::SetBreadcrumbs {
+            breadcrumbs: vec![TUI_CONFIG.breadcrumbs.regions.into()],
+        })?;
+
+        self.action_tx.send(Action::SetMenu {
+            menu_items: [vec![], vec![], self.get_default_menu()],
+        })?;
+
+        self.send_focus_action(&self.action_tx)
+    }
+
     fn handle_key_event(&mut self, key: KeyEvent, app_state: &AppState) -> anyhow::Result<()> {
         if !self.has_focus(app_state) {
             if TUI_CONFIG.key_config.focus_regions.key_code == key.code
                 && TUI_CONFIG.key_config.focus_regions.key_modifier == key.modifiers
             {
-                self.send_focus_action(self.component_type())?;
+                self.set_focus()?;
             }
         } else if self.get_list_len() > 0 {
             match key.code {
@@ -73,17 +84,6 @@ impl Component for RegionsComponent {
             };
         }
 
-        Ok(())
-    }
-
-    fn send_focus_action(&mut self, component_type: ComponentType) -> Result<(), anyhow::Error> {
-        self.action_tx
-            .send(Action::SetFocus {
-                component_type,
-                breadcrumbs: vec![TUI_CONFIG.breadcrumbs.regions.into()],
-                menu: vec![],
-            })
-            .context("Could not send action for focus update")?;
         Ok(())
     }
 

@@ -1,10 +1,14 @@
+use anyhow::Context;
 use crossterm::event::KeyEvent;
 use ratatui::{prelude::Rect, Frame};
 use tokio::sync::mpsc::UnboundedSender;
 
-use crate::state::{
-    actions::actions::Action,
-    appstate::{AppState, ComponentType},
+use crate::{
+    state::{
+        actions::actions::Action,
+        appstate::{AppState, ComponentType, MenuItem},
+    },
+    ui::config::TUI_CONFIG,
 };
 
 pub mod cloud_watch_logs;
@@ -21,11 +25,30 @@ pub trait Component {
 
     fn component_type(&self) -> ComponentType;
 
-    fn send_focus_action(&mut self, _component_type: ComponentType) -> Result<(), anyhow::Error> {
+    fn set_focus(&self) -> anyhow::Result<()> {
         Ok(())
+    }
+
+    fn send_focus_action(&self, action_tx: &UnboundedSender<Action>) -> anyhow::Result<()> {
+        action_tx
+            .send(Action::SetFocus {
+                component_type: self.component_type(),
+            })
+            .context("Could not send action for focus update")
     }
 
     fn handle_key_event(&mut self, key: KeyEvent, app_state: &AppState) -> anyhow::Result<()>;
 
     fn render(&mut self, frame: &mut Frame, area: Rect, app_state: &AppState);
+
+    fn get_default_menu(&self) -> Vec<MenuItem> {
+        vec![
+            TUI_CONFIG.menu.up.into(),
+            TUI_CONFIG.menu.down.into(),
+            TUI_CONFIG.menu.select.into(),
+            TUI_CONFIG.menu.tab.into(),
+            TUI_CONFIG.menu.back_tab.into(),
+            TUI_CONFIG.menu.quit.into(),
+        ]
+    }
 }

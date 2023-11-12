@@ -3,7 +3,7 @@ use ratatui::{prelude::*, widgets::*};
 use tokio::sync::mpsc::UnboundedSender;
 
 use crate::state::actions::actions::Action;
-use crate::state::appstate::{AppState, ComponentType};
+use crate::state::appstate::{AWSService, AppState, ComponentType};
 use crate::ui::component::profiles::ProfilesComponent;
 use crate::ui::component::regions::RegionsComponent;
 use crate::ui::component::services::ServicesComponent;
@@ -21,6 +21,7 @@ pub struct HomePage<'a> {
     services_component: ServicesComponent<'a>,
     aws_service_page: AWSServicePage,
     status_component: StatusComponent,
+    old_focus_component_type: ComponentType,
 }
 
 impl<'a> Component for HomePage<'a> {
@@ -28,14 +29,20 @@ impl<'a> Component for HomePage<'a> {
     where
         Self: Sized,
     {
-        HomePage {
+        let mut home_page = HomePage {
             toolbar_component: ToolbarComponent::new(action_tx.clone()),
             profiles_component: ProfilesComponent::new(action_tx.clone()),
             regions_component: RegionsComponent::new(action_tx.clone()),
             services_component: ServicesComponent::new(action_tx.clone()),
             aws_service_page: AWSServicePage::new(action_tx.clone()),
             status_component: StatusComponent::new(action_tx.clone()),
-        }
+            old_focus_component_type: ComponentType::Profiles,
+        };
+
+        let _ = home_page.profiles_component.set_focus();
+        home_page.profiles_component.set_initial_focus(false);
+
+        home_page
     }
 
     fn component_type(&self) -> ComponentType {
@@ -48,25 +55,49 @@ impl<'a> Component for HomePage<'a> {
         }
 
         match key.code {
-            KeyCode::Tab => {
+            KeyCode::Tab if app_state.active_profile.is_some() => {
                 let component_type = match app_state.focus_component {
                     ComponentType::Profiles => ComponentType::Regions,
                     ComponentType::Regions => ComponentType::Services,
-                    ComponentType::Services => ComponentType::AWSService,
+                    ComponentType::Services
+                        if app_state.active_profile.as_ref().unwrap().selected_service
+                            != AWSService::None =>
+                    {
+                        ComponentType::AWSService
+                    }
+                    ComponentType::Services
+                        if app_state.active_profile.as_ref().unwrap().selected_service
+                            == AWSService::None =>
+                    {
+                        ComponentType::Profiles
+                    }
                     ComponentType::AWSService => ComponentType::Profiles,
                     _ => return Ok(()),
                 };
-                self.send_focus_action(component_type)?;
+                self.set_child_component_focus(&component_type)?;
             }
             KeyCode::BackTab => {
-                let component_type = match app_state.focus_component {
-                    ComponentType::Profiles => ComponentType::AWSService,
-                    ComponentType::Regions => ComponentType::Profiles,
-                    ComponentType::Services => ComponentType::Regions,
-                    ComponentType::AWSService => ComponentType::Services,
-                    _ => return Ok(()),
-                };
-                self.send_focus_action(component_type)?;
+                if app_state.active_profile.is_some() {
+                    let component_type = match app_state.focus_component {
+                        ComponentType::Profiles
+                            if app_state.active_profile.as_ref().unwrap().selected_service
+                                != AWSService::None =>
+                        {
+                            ComponentType::AWSService
+                        }
+                        ComponentType::Profiles
+                            if app_state.active_profile.as_ref().unwrap().selected_service
+                                == AWSService::None =>
+                        {
+                            ComponentType::Services
+                        }
+                        ComponentType::Regions => ComponentType::Profiles,
+                        ComponentType::Services => ComponentType::Regions,
+                        ComponentType::AWSService => ComponentType::Services,
+                        _ => return Ok(()),
+                    };
+                    self.set_child_component_focus(&component_type)?;
+                }
             }
             _ => {
                 self.profiles_component.handle_key_event(key, app_state)?;
@@ -79,17 +110,12 @@ impl<'a> Component for HomePage<'a> {
         Ok(())
     }
 
-    fn send_focus_action(&mut self, component_type: ComponentType) -> Result<(), anyhow::Error> {
-        match component_type {
-            ComponentType::Profiles => self.profiles_component.send_focus_action(component_type),
-            ComponentType::Regions => self.regions_component.send_focus_action(component_type),
-            ComponentType::Services => self.services_component.send_focus_action(component_type),
-            ComponentType::AWSService => self.aws_service_page.send_focus_action(component_type),
-            _ => Ok(()),
-        }
-    }
-
     fn render(&mut self, frame: &mut Frame, area: Rect, app_state: &AppState) {
+        if self.old_focus_component_type != app_state.focus_component {
+            self.old_focus_component_type = app_state.focus_component.clone();
+            let _ = self.set_child_component_focus(&app_state.focus_component);
+        }
+
         frame.render_widget(
             Block::new().style(Style::new().bg(TUI_CONFIG.theme.background)),
             frame.size(),
@@ -130,5 +156,20 @@ impl<'a> Component for HomePage<'a> {
             .render(frame, main_layout[1], app_state);
         self.status_component
             .render(frame, screen_layout[2], app_state);
+    }
+}
+
+impl<'a> HomePage<'a> {
+    fn set_child_component_focus(
+        &self,
+        component_type: &ComponentType,
+    ) -> Result<(), anyhow::Error> {
+        match component_type {
+            ComponentType::Profiles => self.profiles_component.set_focus(),
+            ComponentType::Regions => self.regions_component.set_focus(),
+            ComponentType::Services => self.services_component.set_focus(),
+            ComponentType::AWSService => self.aws_service_page.set_focus(),
+            _ => Ok(()),
+        }
     }
 }

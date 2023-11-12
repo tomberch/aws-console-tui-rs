@@ -27,7 +27,6 @@ pub struct AWSConfig {
 pub struct LoggingConfig {
     pub level: String,
     pub log_file_path: String,
-    pub log_to_console: String,
 }
 
 #[derive(Default, Debug, Deserialize, Serialize)]
@@ -35,6 +34,7 @@ pub struct LoggingConfig {
 pub struct AppConfig {
     pub aws: AWSConfig,
     pub logging: LoggingConfig,
+    pub performance: String,
 }
 
 pub fn create_config(arguments: &HashMap<String, String>) -> Result<AppConfig> {
@@ -70,6 +70,7 @@ fn create_default_values() -> AppConfig {
             level: "WARN".to_string(),
             ..Default::default()
         },
+        performance: "".into(),
     }
 }
 
@@ -98,7 +99,7 @@ fn get_default_aws_credential_path() -> PathBuf {
 #[cfg(test)]
 mod tests {
 
-    use crate::config::command::{CONSOLE_KEY, CREDENTIALS_KEY, LOG_FILE_PATH, LOG_LEVEL_KEY};
+    use crate::config::command::{CREDENTIALS_KEY, LOG_FILE_PATH, LOG_LEVEL_KEY};
 
     use super::*;
     use assert_fs::prelude::*;
@@ -116,7 +117,7 @@ mod tests {
         assert_eq!(app_config.aws.endpoint, "");
         assert_eq!(app_config.logging.level, "WARN");
         assert_eq!(app_config.logging.log_file_path, "");
-        assert_eq!(app_config.logging.log_to_console, "");
+        assert_eq!(app_config.performance, "");
     }
 
     #[test]
@@ -153,19 +154,10 @@ mod tests {
     }
 
     #[test]
-    fn test_log_to_console_command_config() {
-        let mut commands = HashMap::<String, String>::new();
-        let log_to_console = "yes";
-        commands.insert(CONSOLE_KEY.to_string(), log_to_console.to_string());
-
-        let app_config = create_config(&commands).unwrap();
-
-        assert_eq!(app_config.logging.log_to_console, log_to_console);
-    }
-
-    #[test]
     fn test_config_file() {
         let config_file = r#"
+    performance = "yes"
+
     [aws]
     credentialsPath = "/home/test"
     profiles = ["dev", "prod", "staging"]
@@ -176,7 +168,6 @@ mod tests {
     [logging]
     level = "DEBUG"
     logFilePath = "/home/logs"
-    logToConsole = "yes"
 
         "#
         .to_string();
@@ -211,7 +202,7 @@ mod tests {
         assert_eq!(app_config.aws.endpoint, "localhost:4565");
         assert_eq!(app_config.logging.level, "DEBUG");
         assert_eq!(app_config.logging.log_file_path, "/home/logs");
-        assert_eq!(app_config.logging.log_to_console, "yes");
+        assert_eq!(app_config.performance, "yes");
 
         temp_dir.close().unwrap();
     }

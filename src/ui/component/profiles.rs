@@ -1,6 +1,5 @@
 use std::cmp::min;
 
-use anyhow::Context;
 use crossterm::event::KeyEvent;
 
 use ratatui::{
@@ -25,6 +24,7 @@ pub struct ProfilesComponent {
     action_tx: UnboundedSender<Action>,
     selected_index: u16,
     active_profile_index: Option<u16>,
+    is_initial_focus: bool,
 }
 
 impl Component for ProfilesComponent {
@@ -36,6 +36,7 @@ impl Component for ProfilesComponent {
             action_tx: action_tx.clone(),
             selected_index: 0,
             active_profile_index: None,
+            is_initial_focus: true,
         }
     }
 
@@ -43,12 +44,35 @@ impl Component for ProfilesComponent {
         ComponentType::Profiles
     }
 
+    fn set_focus(&self) -> anyhow::Result<()> {
+        self.action_tx.send(Action::SetBreadcrumbs {
+            breadcrumbs: vec![TUI_CONFIG.breadcrumbs.profiles.into()],
+        })?;
+
+        let menu_items = if self.is_initial_focus {
+            vec![
+                TUI_CONFIG.menu.up.into(),
+                TUI_CONFIG.menu.down.into(),
+                TUI_CONFIG.menu.select.into(),
+                TUI_CONFIG.menu.quit.into(),
+            ]
+        } else {
+            self.get_default_menu()
+        };
+
+        self.action_tx.send(Action::SetMenu {
+            menu_items: [vec![], vec![], menu_items],
+        })?;
+
+        self.send_focus_action(&self.action_tx)
+    }
+
     fn handle_key_event(&mut self, key: KeyEvent, app_state: &AppState) -> anyhow::Result<()> {
         if !self.has_focus(app_state) {
             if TUI_CONFIG.key_config.focus_profiles.key_code == key.code
                 && TUI_CONFIG.key_config.focus_profiles.key_modifier == key.modifiers
             {
-                self.send_focus_action(self.component_type())?;
+                self.set_focus()?;
             }
         } else if self.get_list_len(app_state) > 0 {
             match key.code {
@@ -70,17 +94,6 @@ impl Component for ProfilesComponent {
             };
         }
 
-        Ok(())
-    }
-
-    fn send_focus_action(&mut self, component_type: ComponentType) -> Result<(), anyhow::Error> {
-        self.action_tx
-            .send(Action::SetFocus {
-                component_type,
-                breadcrumbs: vec![TUI_CONFIG.breadcrumbs.profiles.into()],
-                menu: vec![],
-            })
-            .context("Could not send action for focus update")?;
         Ok(())
     }
 
@@ -123,6 +136,10 @@ impl Component for ProfilesComponent {
 }
 
 impl ProfilesComponent {
+    pub fn set_initial_focus(&mut self, is_initial_focus: bool) {
+        self.is_initial_focus = is_initial_focus;
+    }
+
     fn has_focus(&self, app_state: &AppState) -> bool {
         app_state.focus_component == self.component_type()
     }

@@ -11,6 +11,7 @@ use crate::ui::config::TUI_CONFIG;
 
 pub struct AWSServicePage {
     pub action_tx: UnboundedSender<Action>,
+    active_aws_service: AWSService,
     active_component: Box<dyn Component>,
 }
 
@@ -21,6 +22,7 @@ impl Component for AWSServicePage {
     {
         AWSServicePage {
             action_tx: action_tx.clone(),
+            active_aws_service: AWSService::None,
             active_component: Box::new(CloudWatchLogsComponent::new(action_tx.clone())),
         }
     }
@@ -34,21 +36,29 @@ impl Component for AWSServicePage {
             if TUI_CONFIG.key_config.focus_profiles.key_code == key.code
                 && TUI_CONFIG.key_config.focus_profiles.key_modifier == key.modifiers
             {
-                self.send_focus_action(self.component_type())?;
+                self.set_focus()?
             }
-        } else {
+        } else if self.has_active_aws_service(app_state) {
             self.active_component.handle_key_event(key, app_state)?;
         }
 
         Ok(())
     }
 
-    fn send_focus_action(&mut self, _component_type: ComponentType) -> Result<(), anyhow::Error> {
-        self.active_component
-            .send_focus_action(self.component_type())
+    fn set_focus(&self) -> anyhow::Result<()> {
+        self.active_component.set_focus()?;
+        self.send_focus_action(&self.action_tx)
     }
 
     fn render(&mut self, frame: &mut Frame, area: Rect, app_state: &AppState) {
+        if let Some(profile) = &app_state.active_profile {
+            if profile.selected_service != self.active_aws_service {
+                self.active_aws_service = profile.selected_service.clone();
+                self.active_component = self.create_service_component(&profile.selected_service);
+                let _ = self.set_focus();
+            }
+        }
+
         if self.has_active_aws_service(app_state) {
             self.active_component.render(frame, area, app_state)
         } else {
@@ -76,5 +86,14 @@ impl AWSServicePage {
         } else {
             false
         }
+    }
+
+    fn create_service_component(&self, selected_service: &AWSService) -> Box<dyn Component> {
+        let component = match selected_service {
+            AWSService::CloudWatchLogs => CloudWatchLogsComponent::new(self.action_tx.clone()),
+            _ => CloudWatchLogsComponent::new(self.action_tx.clone()),
+        };
+
+        Box::new(component)
     }
 }

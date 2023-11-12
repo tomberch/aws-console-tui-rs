@@ -12,7 +12,7 @@ pub struct TuiConfig<'a> {
     pub breadcrumbs: Breadcrumbs<'a>,
     pub menu: Menu<'a>,
     pub messages: Messages<'a>,
-    pub theme: Theme,
+    pub theme: Theme<'a>,
 }
 
 pub struct KeyConfig<'a> {
@@ -76,15 +76,14 @@ pub struct Menu<'a> {
 pub struct MenuItemText<'a> {
     pub title: &'a str,
     pub command: &'a str,
-    pub common_command: bool,
+    pub color_index: usize,
 }
 
-pub struct Theme {
+pub struct Theme<'a> {
     pub background: Color,
     pub border: Color,
     pub border_highlight: Color,
-    pub command: Color,
-    pub common_command: Color,
+    pub command_colors: &'a [Color],
     pub toolbar_info_topic: Color,
     pub status_message_text: Color,
     pub error_message_text: Color,
@@ -160,45 +159,44 @@ pub const TUI_CONFIG: TuiConfig = TuiConfig {
         up: MenuItemText {
             title: "prev element",
             command: "<up>",
-            common_command: true,
+            color_index: 1,
         },
         down: MenuItemText {
             title: "next element",
             command: "<down",
-            common_command: true,
+            color_index: 1,
         },
         select: MenuItemText {
             title: "select",
             command: "<enter>",
-            common_command: true,
+            color_index: 1,
         },
         quit: MenuItemText {
             title: "quit",
             command: "<ctrl-c>",
-            common_command: true,
+            color_index: 1,
         },
         tab: MenuItemText {
             title: "cycle forward",
             command: "<tab>",
-            common_command: true,
+            color_index: 1,
         },
         back_tab: MenuItemText {
             title: "cycle backward",
             command: "<shift-tab>",
-            common_command: true,
+            color_index: 1,
         },
         details: MenuItemText {
             title: "Details",
             command: "<d>",
-            common_command: false,
+            color_index: 0,
         },
     },
     theme: Theme {
         background: Color::Indexed(232),
         border: Color::Rgb(0, 126, 200),
         border_highlight: Color::Rgb(135, 206, 250),
-        command: Color::Rgb(255, 27, 255),
-        common_command: Color::Rgb(30, 144, 255),
+        command_colors: &[Color::Rgb(255, 27, 255), Color::Rgb(30, 144, 255)],
         toolbar_info_topic: Color::Rgb(231, 120, 0),
         status_message_text: Color::Rgb(226, 199, 160),
         error_message_text: Color::Rgb(204, 0, 0),
