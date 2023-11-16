@@ -1,7 +1,8 @@
 use crate::config::{command::parse_commands, logging::init_tracing};
 
 use anyhow::Result;
-use config::config::{create_config, AppConfig};
+
+use config::app_config::{create_config, AppConfig};
 use state::manager::StateManager;
 use std::collections::HashMap;
 use tokio_util::sync::CancellationToken;

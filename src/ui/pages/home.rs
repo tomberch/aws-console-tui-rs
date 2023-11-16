@@ -2,7 +2,7 @@ use crossterm::event::{KeyCode, KeyEvent};
 use ratatui::{prelude::*, widgets::*};
 use tokio::sync::mpsc::UnboundedSender;
 
-use crate::state::actions::actions::Action;
+use crate::state::action_handlers::actions::Action;
 use crate::state::appstate::{AWSService, AppState, ComponentType};
 use crate::ui::component::profiles::ProfilesComponent;
 use crate::ui::component::regions::RegionsComponent;
@@ -10,14 +10,15 @@ use crate::ui::component::services::ServicesComponent;
 use crate::ui::component::status::StatusComponent;
 use crate::ui::component::toolbar::ToolbarComponent;
 use crate::ui::component::Component;
-use crate::ui::config::TUI_CONFIG;
+use crate::ui::tui_config::TUI_CONFIG;
 
 use super::service::AWSServicePage;
 
 pub struct HomePage<'a> {
+    action_tx: UnboundedSender<Action>,
     toolbar_component: ToolbarComponent,
-    profiles_component: ProfilesComponent,
-    regions_component: RegionsComponent,
+    profiles_component: ProfilesComponent<'a>,
+    regions_component: RegionsComponent<'a>,
     services_component: ServicesComponent<'a>,
     aws_service_page: AWSServicePage,
     status_component: StatusComponent,
@@ -29,7 +30,8 @@ impl<'a> Component for HomePage<'a> {
     where
         Self: Sized,
     {
-        let mut home_page = HomePage {
+        HomePage {
+            action_tx: action_tx.clone(),
             toolbar_component: ToolbarComponent::new(action_tx.clone()),
             profiles_component: ProfilesComponent::new(action_tx.clone()),
             regions_component: RegionsComponent::new(action_tx.clone()),
@@ -37,12 +39,7 @@ impl<'a> Component for HomePage<'a> {
             aws_service_page: AWSServicePage::new(action_tx.clone()),
             status_component: StatusComponent::new(action_tx.clone()),
             old_focus_component_type: ComponentType::Profiles,
-        };
-
-        let _ = home_page.profiles_component.set_focus();
-        home_page.profiles_component.set_initial_focus(false);
-
-        home_page
+        }
     }
 
     fn component_type(&self) -> ComponentType {
@@ -55,6 +52,17 @@ impl<'a> Component for HomePage<'a> {
         }
 
         match key.code {
+            KeyCode::Char('x')
+                if app_state.focus_component == ComponentType::AWSService
+                    && !app_state.is_expanded =>
+            {
+                self.action_tx.send(Action::ToggleSidePane)?
+            }
+
+            KeyCode::Char('c') if app_state.is_expanded => {
+                self.action_tx.send(Action::ToggleSidePane)?
+            }
+
             KeyCode::Tab if app_state.active_profile.is_some() => {
                 let component_type = match app_state.focus_component {
                     ComponentType::Profiles => ComponentType::Regions,
@@ -76,6 +84,7 @@ impl<'a> Component for HomePage<'a> {
                 };
                 self.set_child_component_focus(&component_type)?;
             }
+
             KeyCode::BackTab => {
                 if app_state.active_profile.is_some() {
                     let component_type = match app_state.focus_component {
@@ -99,6 +108,7 @@ impl<'a> Component for HomePage<'a> {
                     self.set_child_component_focus(&component_type)?;
                 }
             }
+
             _ => {
                 self.profiles_component.handle_key_event(key, app_state)?;
                 self.regions_component.handle_key_event(key, app_state)?;
@@ -130,36 +140,46 @@ impl<'a> Component for HomePage<'a> {
             ])
             .split(area);
 
-        let main_layout = Layout::default()
-            .direction(Direction::Horizontal)
-            .constraints(vec![Constraint::Percentage(20), Constraint::Percentage(80)])
-            .split(screen_layout[1]);
+        if app_state.is_expanded {
+            let main_layout = Layout::default()
+                .direction(Direction::Horizontal)
+                .constraints(vec![Constraint::Percentage(20), Constraint::Percentage(80)])
+                .split(screen_layout[1]);
 
-        let list_layout = Layout::default()
-            .direction(Direction::Vertical)
-            .constraints(vec![
-                Constraint::Percentage(25),
-                Constraint::Percentage(25),
-                Constraint::Percentage(50),
-            ])
-            .split(main_layout[0]);
+            let list_layout = Layout::default()
+                .direction(Direction::Vertical)
+                .constraints(vec![
+                    Constraint::Percentage(25),
+                    Constraint::Percentage(25),
+                    Constraint::Percentage(50),
+                ])
+                .split(main_layout[0]);
+
+            self.profiles_component
+                .render(frame, list_layout[0], app_state);
+            self.regions_component
+                .render(frame, list_layout[1], app_state);
+            self.services_component
+                .render(frame, list_layout[2], app_state);
+            self.aws_service_page
+                .render(frame, main_layout[1], app_state);
+        } else {
+            self.aws_service_page
+                .render(frame, screen_layout[1], app_state);
+        }
 
         self.toolbar_component
             .render(frame, screen_layout[0], app_state);
-        self.profiles_component
-            .render(frame, list_layout[0], app_state);
-        self.regions_component
-            .render(frame, list_layout[1], app_state);
-        self.services_component
-            .render(frame, list_layout[2], app_state);
-        self.aws_service_page
-            .render(frame, main_layout[1], app_state);
         self.status_component
             .render(frame, screen_layout[2], app_state);
     }
 }
 
 impl<'a> HomePage<'a> {
+    pub fn set_initial_focus(&self) -> anyhow::Result<()> {
+        self.profiles_component.set_focus()
+    }
+
     fn set_child_component_focus(
         &self,
         component_type: &ComponentType,

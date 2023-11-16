@@ -1,4 +1,4 @@
-use crate::{config::config::AWSConfig, state::appstate::ProfileSource};
+use crate::{config::app_config::AWSConfig, state::appstate::ProfileSource};
 use anyhow::{Context, Result};
 use regex::RegexBuilder;
 use std::{
@@ -88,7 +88,7 @@ mod tests {
     use assert_fs::prelude::{FileWriteStr, PathChild};
 
     use crate::{
-        config::config::AWSConfig,
+        config::app_config::AWSConfig,
         repository::profile::{
             get_available_profiles, AWS_ACCESS_KEY_ID, AWS_CONFIG_FILE, AWS_CREDENTIALS_FILE,
             AWS_DEFAULT_REGION, AWS_SECRET_ACCESS_KEY,

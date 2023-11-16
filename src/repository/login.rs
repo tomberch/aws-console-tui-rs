@@ -3,7 +3,7 @@ use aws_config::{profile::profile_file::ProfileFileKind, SdkConfig};
 
 use tracing::{event, Level};
 
-use crate::{config::config::AWSConfig, state::appstate::ProfileSource};
+use crate::{config::app_config::AWSConfig, state::appstate::ProfileSource};
 
 #[derive(Debug)]
 pub struct AwsCallerIdentity {

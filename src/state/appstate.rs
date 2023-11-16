@@ -3,9 +3,9 @@ use std::collections::HashMap;
 use aws_config::SdkConfig;
 
 use crate::{
-    config::config::{AWSConfig, AppConfig},
+    config::app_config::{AWSConfig, AppConfig},
     repository::profile::get_available_profiles,
-    ui::config::MenuItemText,
+    ui::tui_config::MenuItemText,
 };
 
 use super::cloud_watch_logs_state::CloudWatchState;
@@ -111,6 +111,7 @@ pub struct MeasureState {
 pub struct AppState {
     pub aws_config: AWSConfig,
     pub focus_component: ComponentType,
+    pub is_expanded: bool,
     pub active_profile: Option<Profile>,
     pub profile_state: ProfilesState,
     pub region_state: RegionsState,
@@ -125,6 +126,7 @@ impl AppState {
         AppState {
             aws_config: app_config.aws.clone(),
             focus_component: ComponentType::Profiles,
+            is_expanded: true,
             active_profile: None,
             profile_state: ProfilesState {
                 profile_names: get_available_profiles(&app_config.aws).unwrap(),

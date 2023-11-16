@@ -3,7 +3,7 @@ use aws_config::SdkConfig;
 use aws_sdk_cloudwatchlogs::{config, Client};
 use tracing::{event, Level};
 
-use crate::{config::config::AWSConfig, state::cloud_watch_logs_state::CloudWatchLogGroup};
+use crate::{config::app_config::AWSConfig, state::cloud_watch_logs_state::CloudWatchLogGroup};
 
 pub struct CloudWatchLogsRepository;
 

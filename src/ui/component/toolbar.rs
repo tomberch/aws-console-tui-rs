@@ -10,10 +10,10 @@ use tokio::sync::mpsc::UnboundedSender;
 
 use crate::{
     state::{
-        actions::actions::Action,
+        action_handlers::actions::Action,
         appstate::{AppState, ComponentType, MenuItem},
     },
-    ui::config::TUI_CONFIG,
+    ui::tui_config::TUI_CONFIG,
 };
 
 use super::Component;
@@ -105,8 +105,9 @@ impl ToolbarComponent {
 
     fn render_menu_table(&mut self, frame: &mut Frame, area: Rect, app_state: &AppState) {
         let mut table_rows: Vec<Row> = vec![];
-        let mut max_len_command: [usize; 3] = [0, 0, 0];
-        let mut max_len_title: [usize; 3] = [0, 0, 0];
+        let mut max_len_command: [usize; 4] = [0, 0, 0, 0];
+        let mut max_len_title: [usize; 4] = [0, 0, 0, 0];
+        let base_menu_items = self.get_base_menu_items(app_state);
         let empty_menu_item = MenuItem {
             command: "".into(),
             title: "".into(),
@@ -123,6 +124,7 @@ impl ToolbarComponent {
             let menu_item3 = app_state.toolbar_state.menu_items[2]
                 .get(index)
                 .unwrap_or(&empty_menu_item);
+            let menu_item4 = base_menu_items.get(index).unwrap_or(&empty_menu_item);
 
             max_len_command[0] = std::cmp::max(menu_item1.command.len(), max_len_command[0]);
             max_len_title[0] = std::cmp::max(menu_item1.title.len(), max_len_title[0]);
@@ -130,6 +132,8 @@ impl ToolbarComponent {
             max_len_title[1] = std::cmp::max(menu_item2.title.len(), max_len_title[1]);
             max_len_command[2] = std::cmp::max(menu_item3.command.len(), max_len_command[2]);
             max_len_title[2] = std::cmp::max(menu_item3.title.len(), max_len_title[2]);
+            max_len_command[3] = std::cmp::max(menu_item4.command.len(), max_len_command[3]);
+            max_len_title[3] = std::cmp::max(menu_item4.title.len(), max_len_title[3]);
 
             table_rows.push(Row::new(vec![
                 Cell::from(menu_item1.command.as_str()).style(
@@ -144,6 +148,10 @@ impl ToolbarComponent {
                     Style::default().fg(TUI_CONFIG.theme.command_colors[menu_item3.color_index]),
                 ),
                 Cell::from(menu_item3.title.as_str()).style(Style::default().fg(Color::White)),
+                Cell::from(menu_item4.command.as_str()).style(
+                    Style::default().fg(TUI_CONFIG.theme.command_colors[menu_item4.color_index]),
+                ),
+                Cell::from(menu_item4.title.as_str()).style(Style::default().fg(Color::White)),
             ]));
         }
 
@@ -154,6 +162,8 @@ impl ToolbarComponent {
             Constraint::Length(max_len_title[1] as u16 + 3),
             Constraint::Length(max_len_command[2] as u16),
             Constraint::Length(max_len_title[2] as u16),
+            Constraint::Length(max_len_command[3] as u16),
+            Constraint::Length(max_len_title[3] as u16),
         ];
 
         let menu_table = Table::new(table_rows)
@@ -161,5 +171,28 @@ impl ToolbarComponent {
             .widths(&constraints);
 
         frame.render_stateful_widget(menu_table, area, &mut self.menu_table_state);
+    }
+
+    fn get_base_menu_items(&self, app_state: &AppState) -> Vec<MenuItem> {
+        if app_state.active_profile.is_none() {
+            return vec![TUI_CONFIG.menu.quit.into()];
+        }
+
+        match app_state.focus_component {
+            ComponentType::AWSService if app_state.is_expanded => vec![
+                TUI_CONFIG.menu.collapse.into(),
+                TUI_CONFIG.menu.tab.into(),
+                TUI_CONFIG.menu.back_tab.into(),
+                TUI_CONFIG.menu.quit.into(),
+            ],
+            ComponentType::AWSService if !app_state.is_expanded => {
+                vec![TUI_CONFIG.menu.expand.into(), TUI_CONFIG.menu.quit.into()]
+            }
+            _ => vec![
+                TUI_CONFIG.menu.tab.into(),
+                TUI_CONFIG.menu.back_tab.into(),
+                TUI_CONFIG.menu.quit.into(),
+            ],
+        }
     }
 }

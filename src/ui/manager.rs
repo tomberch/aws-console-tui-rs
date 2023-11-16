@@ -15,9 +15,9 @@ use tokio::{
 };
 use tokio_util::sync::CancellationToken;
 
-use crate::state::{actions::actions::Action, appstate::AppState};
+use crate::state::{action_handlers::actions::Action, appstate::AppState};
 
-use super::{config::TUI_CONFIG, pages::home::HomePage, term::Term};
+use super::{pages::home::HomePage, term::Term, tui_config::TUI_CONFIG};
 
 pub struct UIManager {
     action_tx: mpsc::UnboundedSender<Action>,
@@ -42,7 +42,8 @@ impl UIManager {
         let mut event_reader = EventStream::new();
 
         let mut app_state = state_rx.recv().await.unwrap().read().await.to_owned();
-        let mut home_page = { HomePage::new(self.action_tx.clone()) };
+        let mut home_page = HomePage::new(self.action_tx.clone());
+        home_page.set_initial_focus()?;
 
         let mut render_duration = Duration::default();
 

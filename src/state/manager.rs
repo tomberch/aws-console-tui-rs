@@ -11,16 +11,16 @@ use tokio::{
 use tokio_util::sync::CancellationToken;
 
 use crate::{
-    config::config::AppConfig,
-    state::actions::{
+    config::app_config::AppConfig,
+    state::action_handlers::{
         cloud_watch_logs_action_handler::CloudWatchLogsActionHandler,
         profile_action_handler::ProfileActionHandler, region_action_handler::RegionActionHandler,
         service_action_handler::ServiceActionHandler,
     },
-    ui::config::TUI_CONFIG,
+    ui::tui_config::TUI_CONFIG,
 };
 
-use super::{actions::actions::Action, appstate::AppState};
+use super::{action_handlers::actions::Action, appstate::AppState};
 
 pub struct StateManager {
     app_config: AppConfig,
@@ -78,13 +78,14 @@ impl StateManager {
                             mut_app_state.focus_component = component_type;
 
                         },
-                        Action::SetBreadcrumbs {breadcrumbs } => {mut_app_state.status_state.breadcrumbs = breadcrumbs },
-                        Action::SetMenu { menu_items } => {mut_app_state.toolbar_state.menu_items = menu_items },
-                        Action::RenderDuration{ duration } => {mut_app_state.measure_state.render_duration = format!("{:?}", duration) },
-                        Action::Profile{ action } => {ProfileActionHandler::handle(action, &mut mut_app_state).await },
-                        Action::Region{action} => {RegionActionHandler::handle(action, &mut mut_app_state) },
-                        Action::Service{ action }=>{ServiceActionHandler::handle( action, &mut mut_app_state).await },
-                        Action::CloudWatchLogs {action} =>{CloudWatchLogsActionHandler::handle(action, &mut mut_app_state).await },
+                        Action::ToggleSidePane => { mut_app_state.is_expanded = !mut_app_state.is_expanded },
+                        Action::SetBreadcrumbs { breadcrumbs } => {mut_app_state.status_state.breadcrumbs = breadcrumbs },
+                        Action::SetMenu { menu_items } => { mut_app_state.toolbar_state.menu_items = menu_items },
+                        Action::RenderDuration{ duration } => { mut_app_state.measure_state.render_duration = format!("{:?}", duration) },
+                        Action::Profile{ action } => { ProfileActionHandler::handle(action, &mut mut_app_state).await },
+                        Action::Region{action} => { RegionActionHandler::handle(action, &mut mut_app_state) },
+                        Action::Service{ action }=>{ ServiceActionHandler::handle( action, &mut mut_app_state).await },
+                        Action::CloudWatchLogs {action} =>{ CloudWatchLogsActionHandler::handle(action, &mut mut_app_state).await },
                     }
                     mut_app_state.measure_state.action_duration = format!("{:?}", start.elapsed());
                 }

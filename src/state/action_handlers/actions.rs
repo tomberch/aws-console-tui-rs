@@ -26,6 +26,7 @@ pub enum CloudWatchLogsAction {
 pub enum Action {
     SetFocus { component_type: ComponentType },
     SetMenu { menu_items: [Vec<MenuItem>; 3] },
+    ToggleSidePane,
     SetBreadcrumbs { breadcrumbs: Vec<String> },
     RenderDuration { duration: Duration },
     Profile { action: ProfileAction },

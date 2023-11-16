@@ -2,12 +2,12 @@ use crossterm::event::KeyEvent;
 use ratatui::{prelude::*, widgets::*};
 use tokio::sync::mpsc::UnboundedSender;
 
-use crate::state::actions::actions::Action;
+use crate::state::action_handlers::actions::Action;
 use crate::state::appstate::{AWSService, AppState, ComponentType};
 
-use crate::ui::component::cloud_watch_logs::CloudWatchLogsComponent;
+use crate::ui::component::cloud_watch_logs::cloud_watch_log_groups::CloudWatchLogGroupComponent;
 use crate::ui::component::Component;
-use crate::ui::config::TUI_CONFIG;
+use crate::ui::tui_config::TUI_CONFIG;
 
 pub struct AWSServicePage {
     pub action_tx: UnboundedSender<Action>,
@@ -23,7 +23,7 @@ impl Component for AWSServicePage {
         AWSServicePage {
             action_tx: action_tx.clone(),
             active_aws_service: AWSService::None,
-            active_component: Box::new(CloudWatchLogsComponent::new(action_tx.clone())),
+            active_component: Box::new(CloudWatchLogGroupComponent::new(action_tx.clone())),
         }
     }
 
@@ -90,8 +90,8 @@ impl AWSServicePage {
 
     fn create_service_component(&self, selected_service: &AWSService) -> Box<dyn Component> {
         let component = match selected_service {
-            AWSService::CloudWatchLogs => CloudWatchLogsComponent::new(self.action_tx.clone()),
-            _ => CloudWatchLogsComponent::new(self.action_tx.clone()),
+            AWSService::CloudWatchLogs => CloudWatchLogGroupComponent::new(self.action_tx.clone()),
+            _ => CloudWatchLogGroupComponent::new(self.action_tx.clone()),
         };
 
         Box::new(component)

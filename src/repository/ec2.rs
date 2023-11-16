@@ -1,7 +1,7 @@
 use aws_config::SdkConfig;
 use aws_sdk_ec2::{config, Client};
 
-use crate::config::config::AWSConfig;
+use crate::config::app_config::AWSConfig;
 
 pub struct EC2Repository;
 

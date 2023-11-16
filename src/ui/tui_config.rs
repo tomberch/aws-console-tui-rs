@@ -64,9 +64,11 @@ pub struct Breadcrumbs<'a> {
 }
 
 pub struct Menu<'a> {
-    pub quit: MenuItemText<'a>,
+    pub expand: MenuItemText<'a>,
+    pub collapse: MenuItemText<'a>,
     pub tab: MenuItemText<'a>,
     pub back_tab: MenuItemText<'a>,
+    pub quit: MenuItemText<'a>,
     pub details: MenuItemText<'a>,
     pub up: MenuItemText<'a>,
     pub down: MenuItemText<'a>,
@@ -156,19 +158,14 @@ pub const TUI_CONFIG: TuiConfig = TuiConfig {
         cloud_watch_logs: "<logs>",
     },
     menu: Menu {
-        up: MenuItemText {
-            title: "prev element",
-            command: "<up>",
+        collapse: MenuItemText {
+            title: "collapse",
+            command: "<c>",
             color_index: 1,
         },
-        down: MenuItemText {
-            title: "next element",
-            command: "<down",
-            color_index: 1,
-        },
-        select: MenuItemText {
-            title: "select",
-            command: "<enter>",
+        expand: MenuItemText {
+            title: "expand",
+            command: "<x>",
             color_index: 1,
         },
         quit: MenuItemText {
@@ -185,6 +182,21 @@ pub const TUI_CONFIG: TuiConfig = TuiConfig {
             title: "cycle backward",
             command: "<shift-tab>",
             color_index: 1,
+        },
+        up: MenuItemText {
+            title: "prev element",
+            command: "<up>",
+            color_index: 0,
+        },
+        down: MenuItemText {
+            title: "next element",
+            command: "<down",
+            color_index: 0,
+        },
+        select: MenuItemText {
+            title: "select",
+            command: "<enter>",
+            color_index: 0,
         },
         details: MenuItemText {
             title: "Details",

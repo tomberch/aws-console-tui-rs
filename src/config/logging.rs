@@ -1,4 +1,4 @@
-use super::config::LoggingConfig;
+use super::app_config::LoggingConfig;
 use tracing::Level;
 use tracing_appender::non_blocking::WorkerGuard;
 use tracing_subscriber::{filter::LevelFilter, prelude::*, Layer};

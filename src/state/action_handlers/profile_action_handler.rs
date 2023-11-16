@@ -1,7 +1,7 @@
 use crate::{
     repository::{ec2::EC2Repository, login::LoginRepository},
     state::appstate::{AWSService, AppState, ComponentType, Profile, ProfileSource},
-    ui::config::TUI_CONFIG,
+    ui::tui_config::TUI_CONFIG,
 };
 
 use super::actions::ProfileAction;

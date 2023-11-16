@@ -3,7 +3,7 @@ use tracing::{event, Level};
 use crate::{
     repository::cloud_watch_logs::CloudWatchLogsRepository,
     state::{appstate::AppState, cloud_watch_logs_state::CloudWatchState},
-    ui::config::TUI_CONFIG,
+    ui::tui_config::TUI_CONFIG,
 };
 
 use super::actions::CloudWatchLogsAction;

@@ -10,10 +10,10 @@ use tokio::sync::mpsc::UnboundedSender;
 
 use crate::{
     state::{
-        actions::actions::Action,
+        action_handlers::actions::Action,
         appstate::{AppState, ComponentType},
     },
-    ui::config::TUI_CONFIG,
+    ui::tui_config::TUI_CONFIG,
 };
 
 use super::Component;

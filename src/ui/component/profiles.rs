@@ -1,42 +1,35 @@
-use std::cmp::min;
-
 use crossterm::event::KeyEvent;
 
 use ratatui::{
     prelude::{Alignment, Rect},
-    style::{Color, Style},
-    text::Text,
-    widgets::{Block, BorderType, Borders, List, ListItem, ListState},
+    style::Style,
+    widgets::{Block, BorderType, Borders, List, ListState},
     Frame,
 };
 use tokio::sync::mpsc::UnboundedSender;
 
-use super::Component;
+use super::{base::list_component::ListComponent, Component};
 use crate::{
     state::{
-        actions::actions::{Action, ProfileAction},
+        action_handlers::actions::{Action, ProfileAction},
         appstate::{AppState, ComponentType},
     },
-    ui::config::TUI_CONFIG,
+    ui::tui_config::TUI_CONFIG,
 };
 
-pub struct ProfilesComponent {
+pub struct ProfilesComponent<'a> {
     action_tx: UnboundedSender<Action>,
-    selected_index: u16,
-    active_profile_index: Option<u16>,
-    is_initial_focus: bool,
+    profile_list: ListComponent<'a>,
 }
 
-impl Component for ProfilesComponent {
+impl<'a> Component for ProfilesComponent<'a> {
     fn new(action_tx: UnboundedSender<Action>) -> Self
     where
         Self: Sized,
     {
         ProfilesComponent {
             action_tx: action_tx.clone(),
-            selected_index: 0,
-            active_profile_index: None,
-            is_initial_focus: true,
+            profile_list: ListComponent::new(),
         }
     }
 
@@ -49,19 +42,16 @@ impl Component for ProfilesComponent {
             breadcrumbs: vec![TUI_CONFIG.breadcrumbs.profiles.into()],
         })?;
 
-        let menu_items = if self.is_initial_focus {
-            vec![
-                TUI_CONFIG.menu.up.into(),
-                TUI_CONFIG.menu.down.into(),
-                TUI_CONFIG.menu.select.into(),
-                TUI_CONFIG.menu.quit.into(),
-            ]
-        } else {
-            self.get_default_menu()
-        };
-
         self.action_tx.send(Action::SetMenu {
-            menu_items: [vec![], vec![], menu_items],
+            menu_items: [
+                vec![],
+                vec![],
+                vec![
+                    TUI_CONFIG.menu.down.into(),
+                    TUI_CONFIG.menu.up.into(),
+                    TUI_CONFIG.menu.select.into(),
+                ],
+            ],
         })?;
 
         self.send_focus_action(&self.action_tx)
@@ -76,19 +66,13 @@ impl Component for ProfilesComponent {
             }
         } else if self.get_list_len(app_state) > 0 {
             match key.code {
-                val if TUI_CONFIG.list_config.selection_up == val => {
-                    self.selected_index = if self.selected_index > 0 {
-                        self.selected_index - 1
-                    } else {
-                        0
-                    }
-                }
+                val if TUI_CONFIG.list_config.selection_up == val => self.profile_list.move_up(),
                 val if TUI_CONFIG.list_config.selection_down == val => {
-                    self.selected_index =
-                        min(self.selected_index + 1, self.get_list_len(app_state) - 1);
+                    self.profile_list.move_down()
                 }
+
                 val if TUI_CONFIG.list_config.do_selection == val => {
-                    self.set_active_profile(self.selected_index, app_state)?;
+                    self.set_active_profile(app_state)?;
                 }
                 _ => {}
             };
@@ -98,20 +82,16 @@ impl Component for ProfilesComponent {
     }
 
     fn render(&mut self, frame: &mut Frame, area: Rect, app_state: &AppState) {
-        let list_items = app_state
-            .profile_state
-            .profile_names
-            .keys()
-            .enumerate()
-            .map(|(index, element)| {
-                ListItem::new(self.create_list_item_text(index, element.into()))
-            })
-            .collect::<Vec<ListItem>>();
+        if !self.profile_list.has_list_elements() {
+            self.profile_list
+                .create_list_items(app_state.profile_state.profile_names.keys())
+        }
 
-        let mut list_state = ListState::default().with_selected(Some(self.selected_index.into()));
+        let mut list_state =
+            ListState::default().with_selected(Some(self.profile_list.get_selected_index()));
 
         frame.render_stateful_widget(
-            List::new(list_items)
+            List::new(self.profile_list.create_tui_list())
                 .block(
                     Block::default()
                         .title(format!(
@@ -135,11 +115,7 @@ impl Component for ProfilesComponent {
     }
 }
 
-impl ProfilesComponent {
-    pub fn set_initial_focus(&mut self, is_initial_focus: bool) {
-        self.is_initial_focus = is_initial_focus;
-    }
-
+impl<'a> ProfilesComponent<'a> {
     fn has_focus(&self, app_state: &AppState) -> bool {
         app_state.focus_component == self.component_type()
     }
@@ -153,53 +129,22 @@ impl ProfilesComponent {
             .unwrap()
     }
 
-    fn create_list_item_text(&self, index: usize, list_item_string: String) -> Text {
-        let is_active_profile_index = match self.active_profile_index {
-            None => false,
-            Some(active_index) => usize::try_from(active_index)
-                .map(|active_index| active_index == index)
-                .unwrap_or(false),
-        };
-
-        if is_active_profile_index {
-            Text::styled(
-                format!("**{}", list_item_string),
-                Style::default().fg(Color::Yellow),
-            )
-        } else {
-            Text::from(list_item_string)
+    fn set_active_profile(&mut self, app_state: &AppState) -> anyhow::Result<()> {
+        if let Some(profile_name) = self.profile_list.set_active_item() {
+            self.action_tx.send(Action::Profile {
+                action: ProfileAction::SelectProfile {
+                    profile: (
+                        profile_name.clone(),
+                        app_state
+                            .profile_state
+                            .profile_names
+                            .get(&profile_name)
+                            .unwrap()
+                            .to_owned(),
+                    ),
+                },
+            })?
         }
-    }
-
-    fn set_active_profile(&mut self, index: u16, app_state: &AppState) -> anyhow::Result<()> {
-        if let Some(active_index) = self.active_profile_index {
-            if active_index == index {
-                return Ok(());
-            }
-        }
-
-        self.active_profile_index = Some(index);
-
-        let profile_name = &app_state
-            .profile_state
-            .profile_names
-            .keys()
-            .cloned()
-            .collect::<Vec<String>>()[usize::from(index)];
-
-        self.action_tx.send(Action::Profile {
-            action: ProfileAction::SelectProfile {
-                profile: (
-                    profile_name.clone(),
-                    app_state
-                        .profile_state
-                        .profile_names
-                        .get(profile_name)
-                        .unwrap()
-                        .to_owned(),
-                ),
-            },
-        })?;
 
         Ok(())
     }
