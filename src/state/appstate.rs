@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use aws_config::SdkConfig;
+use ratatui::layout::Rect;
 
 use crate::{
     config::app_config::{AWSConfig, AppConfig},
@@ -110,6 +111,7 @@ pub struct MeasureState {
 #[derive(Clone, Debug)]
 pub struct AppState {
     pub aws_config: AWSConfig,
+    pub area: Rect,
     pub focus_component: ComponentType,
     pub is_expanded: bool,
     pub active_profile: Option<Profile>,
@@ -125,6 +127,7 @@ impl AppState {
     pub fn new(app_config: &AppConfig) -> Self {
         AppState {
             aws_config: app_config.aws.clone(),
+            area: Rect::default(),
             focus_component: ComponentType::Profiles,
             is_expanded: true,
             active_profile: None,

@@ -35,6 +35,8 @@ impl UIManager {
         cancellation_token: CancellationToken,
     ) -> anyhow::Result<()> {
         let mut terminal = Term::start().context("Cannot start the terminal")?;
+        self.update_frame_size(&terminal.get_frame().size())?;
+
         let mut ticker = tokio::time::interval(Duration::from_millis(TUI_CONFIG.tick_rate_in_ms));
         let mut performance_measure_ticker = tokio::time::interval(Duration::from_secs(
             TUI_CONFIG.performance_measure_rate_in_sec,
@@ -81,6 +83,7 @@ impl UIManager {
                                 terminal
                                 .resize(Rect::new(0, 0, width, height))
                                 .context("Tried to resize terminal window")?;
+                             self.update_frame_size(&terminal.get_frame().size())?;
                             },
                             Event::FocusLost => {},
                             Event::FocusGained => {},
@@ -112,10 +115,11 @@ impl UIManager {
     }
 
     fn should_quit(&self, key: &KeyEvent) -> bool {
-        match key.code {
-            KeyCode::Char('q') => true,
-            KeyCode::Char('c') if key.modifiers == KeyModifiers::CONTROL => true,
-            _ => false,
-        }
+        matches!(key.code, KeyCode::Char('c') if key.modifiers == KeyModifiers::CONTROL)
+    }
+
+    fn update_frame_size(&self, &area: &Rect) -> anyhow::Result<()> {
+        self.action_tx.send(Action::SetTerminalArea { area })?;
+        Ok(())
     }
 }

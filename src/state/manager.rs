@@ -78,6 +78,7 @@ impl StateManager {
                             mut_app_state.focus_component = component_type;
 
                         },
+                        Action::SetTerminalArea { area } => { mut_app_state.area = area },
                         Action::ToggleSidePane => { mut_app_state.is_expanded = !mut_app_state.is_expanded },
                         Action::SetBreadcrumbs { breadcrumbs } => {mut_app_state.status_state.breadcrumbs = breadcrumbs },
                         Action::SetMenu { menu_items } => { mut_app_state.toolbar_state.menu_items = menu_items },

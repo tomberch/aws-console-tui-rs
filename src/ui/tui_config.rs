@@ -61,6 +61,7 @@ pub struct Breadcrumbs<'a> {
     pub regions: &'a str,
     pub services: &'a str,
     pub cloud_watch_logs: &'a str,
+    pub cloud_watch_logs_filtered: &'a str,
 }
 
 pub struct Menu<'a> {
@@ -69,7 +70,8 @@ pub struct Menu<'a> {
     pub tab: MenuItemText<'a>,
     pub back_tab: MenuItemText<'a>,
     pub quit: MenuItemText<'a>,
-    pub details: MenuItemText<'a>,
+    pub info: MenuItemText<'a>,
+    pub filter: MenuItemText<'a>,
     pub up: MenuItemText<'a>,
     pub down: MenuItemText<'a>,
     pub select: MenuItemText<'a>,
@@ -155,7 +157,8 @@ pub const TUI_CONFIG: TuiConfig = TuiConfig {
         profiles: " <profiles> ",
         regions: " <regions> ",
         services: " <services> ",
-        cloud_watch_logs: "<logs>",
+        cloud_watch_logs: " <logs>  ",
+        cloud_watch_logs_filtered: " <filtered> ",
     },
     menu: Menu {
         collapse: MenuItemText {
@@ -198,9 +201,14 @@ pub const TUI_CONFIG: TuiConfig = TuiConfig {
             command: "<enter>",
             color_index: 0,
         },
-        details: MenuItemText {
-            title: "Details",
-            command: "<d>",
+        info: MenuItemText {
+            title: "infos",
+            command: "<i>",
+            color_index: 0,
+        },
+        filter: MenuItemText {
+            title: "filter",
+            command: "<f>",
             color_index: 0,
         },
     },

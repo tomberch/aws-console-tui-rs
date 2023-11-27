@@ -1,5 +1,5 @@
 use chrono::{DateTime, SecondsFormat};
-use crossterm::event::{KeyCode, KeyEvent};
+use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
 use crate::{
     state::{
@@ -13,10 +13,9 @@ use crate::{
     },
 };
 use ratatui::{
-    layout::{Constraint, Direction, Layout},
     prelude::{Alignment, Rect},
     style::Style,
-    widgets::{Block, BorderType, Borders, List, ListState, Paragraph},
+    widgets::{Block, BorderType, Borders, Clear, List, ListState, Paragraph},
     Frame,
 };
 use tokio::sync::mpsc::UnboundedSender;
@@ -26,7 +25,8 @@ pub struct CloudWatchLogGroupComponent<'a> {
     action_tx: UnboundedSender<Action>,
     log_group_list: ListComponent<'a>,
     first_time_render: bool,
-    filter_text: TextArea<'a>,
+    filter_textarea: TextArea<'a>,
+    is_editing_filter: bool,
 }
 
 impl<'a> Component for CloudWatchLogGroupComponent<'a> {
@@ -35,13 +35,21 @@ impl<'a> Component for CloudWatchLogGroupComponent<'a> {
         Self: Sized,
     {
         let mut filter_text = TextArea::default();
-        filter_text.set_block(Block::default().borders(Borders::ALL).title("Filter"));
+        filter_text.set_cursor_line_style(Style::default());
+        filter_text.set_placeholder_text("Enter filter expression");
+        filter_text.set_block(
+            Block::default()
+                .borders(Borders::ALL)
+                .title("Filter")
+                .title_alignment(Alignment::Center),
+        );
 
         CloudWatchLogGroupComponent {
             action_tx: action_tx.clone(),
             log_group_list: ListComponent::new(),
+            filter_textarea: filter_text,
             first_time_render: true,
-            filter_text,
+            is_editing_filter: false,
         }
     }
 
@@ -50,16 +58,15 @@ impl<'a> Component for CloudWatchLogGroupComponent<'a> {
     }
 
     fn set_focus(&self) -> anyhow::Result<()> {
-        self.action_tx.send(Action::SetBreadcrumbs {
-            breadcrumbs: vec![TUI_CONFIG.breadcrumbs.cloud_watch_logs.into()],
-        })?;
+        self.set_breadcrumbs()?;
 
         self.action_tx.send(Action::SetMenu {
             menu_items: [
                 vec![],
                 vec![],
                 vec![
-                    TUI_CONFIG.menu.details.into(),
+                    TUI_CONFIG.menu.filter.into(),
+                    TUI_CONFIG.menu.info.into(),
                     TUI_CONFIG.menu.up.into(),
                     TUI_CONFIG.menu.down.into(),
                     TUI_CONFIG.menu.select.into(),
@@ -71,22 +78,35 @@ impl<'a> Component for CloudWatchLogGroupComponent<'a> {
     }
 
     fn handle_key_event(&mut self, key: KeyEvent, app_state: &AppState) -> anyhow::Result<()> {
-        match key.code {
-            KeyCode::Char('u') => self.update(),
-            val if TUI_CONFIG.list_config.selection_up == val => self.log_group_list.move_up(),
-            val if TUI_CONFIG.list_config.selection_down == val => self.log_group_list.move_down(),
-            val if TUI_CONFIG.list_config.do_selection == val => {
-                self.set_active_log_group(app_state)?;
+        if self.is_editing_filter {
+            match key.code {
+                KeyCode::Enter => self.is_editing_filter = false,
+                KeyCode::Char('m') if key.modifiers == KeyModifiers::CONTROL => {}
+                _ => {
+                    self.filter_textarea.input(key);
+                }
             }
+        } else {
+            match key.code {
+                KeyCode::Char('u') => self.update()?,
+                KeyCode::Char('f') => self.is_editing_filter = true,
+                val if TUI_CONFIG.list_config.selection_up == val => self.log_group_list.move_up(),
+                val if TUI_CONFIG.list_config.selection_down == val => {
+                    self.log_group_list.move_down();
+                }
+                val if TUI_CONFIG.list_config.do_selection == val => {
+                    self.set_active_log_group(app_state)?;
+                }
 
-            _ => {}
+                _ => {}
+            }
         }
         Ok(())
     }
 
     fn render(&mut self, frame: &mut Frame, area: Rect, app_state: &AppState) {
         if self.first_time_render {
-            self.update();
+            let _ = self.update();
             self.first_time_render = false;
         }
 
@@ -107,40 +127,19 @@ impl<'a> Component for CloudWatchLogGroupComponent<'a> {
                 );
             }
 
-            frame.render_widget(self.create_block(app_state), area);
-
-            let horizontal_layout = Layout::default()
-                .direction(Direction::Vertical)
-                .constraints(vec![
-                    Constraint::Length(1),
-                    Constraint::Length(3),
-                    Constraint::Length(1),
-                    Constraint::Min(1),
-                ])
-                .split(area);
-
-            let vertical_layout = Layout::default()
-                .direction(Direction::Horizontal)
-                .constraints(vec![
-                    Constraint::Length(2),
-                    Constraint::Length(30),
-                    Constraint::Min(1),
-                ])
-                .split(horizontal_layout[1]);
-
-            let vertical_layout2 = Layout::default()
-                .direction(Direction::Horizontal)
-                .constraints(vec![Constraint::Length(2), Constraint::Min(1)])
-                .split(horizontal_layout[3]);
-
-            frame.render_widget(self.filter_text.widget(), vertical_layout[1]);
-
             let mut list_state =
                 ListState::default().with_selected(Some(self.log_group_list.get_selected_index()));
             let list = List::new(self.log_group_list.create_tui_list())
                 .highlight_style(TUI_CONFIG.list_config.selected_style)
-                .highlight_symbol(TUI_CONFIG.list_config.selected_symbol);
-            frame.render_stateful_widget(list, vertical_layout2[1], &mut list_state);
+                .highlight_symbol(TUI_CONFIG.list_config.selected_symbol)
+                .block(self.create_block(app_state));
+            frame.render_stateful_widget(list, area, &mut list_state);
+
+            if self.is_editing_filter {
+                let text_area = self.centered_rect(40, 10, app_state.area);
+                frame.render_widget(Clear, text_area);
+                frame.render_widget(self.filter_textarea.widget(), text_area);
+            }
         }
     }
 }
@@ -170,10 +169,12 @@ impl<'a> CloudWatchLogGroupComponent<'a> {
         Ok(())
     }
 
-    fn update(&self) {
-        let _ = self.action_tx.send(Action::CloudWatchLogs {
+    fn update(&self) -> anyhow::Result<()> {
+        self.action_tx.send(Action::CloudWatchLogs {
             action: CloudWatchLogsAction::GetLogGroups { token: None },
-        });
+        })?;
+
+        self.set_breadcrumbs()
     }
 
     fn create_block(&self, app_state: &AppState) -> Block {
@@ -190,5 +191,19 @@ impl<'a> CloudWatchLogGroupComponent<'a> {
             }))
             .borders(Borders::ALL)
             .border_type(BorderType::Rounded)
+    }
+
+    fn set_breadcrumbs(&self) -> Result<(), anyhow::Error> {
+        self.action_tx.send(Action::SetBreadcrumbs {
+            breadcrumbs: if self.filter_textarea.is_empty() {
+                vec![TUI_CONFIG.breadcrumbs.cloud_watch_logs.into()]
+            } else {
+                vec![
+                    TUI_CONFIG.breadcrumbs.cloud_watch_logs.into(),
+                    TUI_CONFIG.breadcrumbs.cloud_watch_logs_filtered.into(),
+                ]
+            },
+        })?;
+        Ok(())
     }
 }

@@ -1,5 +1,8 @@
 use anyhow::anyhow;
-use aws_config::{profile::profile_file::ProfileFileKind, SdkConfig};
+use aws_config::{
+    meta::region::RegionProviderChain, profile::profile_file::ProfileFileKind, BehaviorVersion,
+    SdkConfig,
+};
 
 use tracing::{event, Level};
 
@@ -60,7 +63,7 @@ impl LoginRepository {
     }
 
     async fn build_env_config(aws_config: &AWSConfig) -> SdkConfig {
-        let mut loader = aws_config::from_env();
+        let mut loader = aws_config::defaults(BehaviorVersion::latest());
         if !aws_config.endpoint.is_empty() {
             loader = loader.endpoint_url(aws_config.endpoint.as_str());
         }
@@ -80,7 +83,8 @@ impl LoginRepository {
             .profile_files(profile_files)
             .profile_name(profile_name);
 
-        let mut loader = aws_config::from_env().credentials_provider(provider.build());
+        let mut loader =
+            aws_config::defaults(BehaviorVersion::latest()).credentials_provider(provider.build());
         if !aws_config.endpoint.is_empty() {
             loader = loader.endpoint_url(aws_config.endpoint.as_str());
         }
@@ -89,7 +93,7 @@ impl LoginRepository {
     }
 
     async fn build_sso_config(profile_name: &str, aws_config: &AWSConfig) -> SdkConfig {
-        let mut loader = aws_config::from_env().profile_name(profile_name);
+        let mut loader = aws_config::defaults(BehaviorVersion::latest()).profile_name(profile_name);
         if !aws_config.endpoint.is_empty() {
             loader = loader.endpoint_url(aws_config.endpoint.as_str());
         }

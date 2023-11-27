@@ -1,6 +1,10 @@
 use anyhow::Context;
 use crossterm::event::KeyEvent;
-use ratatui::{prelude::Rect, Frame};
+use ratatui::{
+    layout::{Constraint, Direction, Layout},
+    prelude::Rect,
+    Frame,
+};
 use tokio::sync::mpsc::UnboundedSender;
 
 use crate::state::{
@@ -38,4 +42,24 @@ pub trait Component {
     fn handle_key_event(&mut self, key: KeyEvent, app_state: &AppState) -> anyhow::Result<()>;
 
     fn render(&mut self, frame: &mut Frame, area: Rect, app_state: &AppState);
+
+    fn centered_rect(&self, percent_x: u16, percent_y: u16, rect: Rect) -> Rect {
+        let popup_layout = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([
+                Constraint::Percentage((100 - percent_y) / 2),
+                Constraint::Length(3),
+                Constraint::Percentage((100 - percent_y) / 2),
+            ])
+            .split(rect);
+
+        Layout::default()
+            .direction(Direction::Horizontal)
+            .constraints([
+                Constraint::Percentage((100 - percent_x) / 2),
+                Constraint::Percentage(percent_x),
+                Constraint::Percentage((100 - percent_x) / 2),
+            ])
+            .split(popup_layout[1])[1]
+    }
 }

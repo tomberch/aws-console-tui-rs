@@ -1,5 +1,7 @@
 use std::time::Duration;
 
+use ratatui::layout::Rect;
+
 use crate::state::appstate::{AWSService, ComponentType, MenuItem, ProfileSource};
 
 #[derive(Debug, Clone)]
@@ -26,6 +28,7 @@ pub enum CloudWatchLogsAction {
 pub enum Action {
     SetFocus { component_type: ComponentType },
     SetMenu { menu_items: [Vec<MenuItem>; 3] },
+    SetTerminalArea { area: Rect },
     ToggleSidePane,
     SetBreadcrumbs { breadcrumbs: Vec<String> },
     RenderDuration { duration: Duration },
